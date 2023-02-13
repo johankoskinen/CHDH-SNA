@@ -42,17 +42,18 @@ For details on venue and timings see [Eventbrite](https://www.eventbrite.com/e/n
 <!-- GETTING STARTED -->
 ## Getting Started
 
-["https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"]("https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/")
+
 
 ### Context
 
-[https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/)
-[Quick-R](https://www.statmethods.net/)
 
 
 
-### Prerequisites
+### R-Prerequisites
 
+No particular R-skills are expected. You should be able to download the RMarkdown files and run them locally. The RMarkdown files will read any data straight from ["https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"]("https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"). No fancy R-wrappers will be used and the code is written entirely in base R and [Quick-R](https://www.statmethods.net/)
+should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
+[https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/) contains all the resources you will ever need.
 This is an example of how to list things you need to use the software and how to install them.
 * npm
   ```sh
