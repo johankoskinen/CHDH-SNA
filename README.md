@@ -11,7 +11,7 @@
   <p align="center">
     This is material for the SNA workshop at Melbourne Connect
     <br />
-    <a href="https://github.com/johankoskinen/CHDH-SNA"><strong>Explore the material »</strong></a>
+    <a href="https://github.com/johankoskinen/CHDH-SNA/data"><strong>Explore the data »</strong></a>
     <br />
     <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/issues">Report Bug</a>
