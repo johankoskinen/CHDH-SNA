@@ -1,0 +1,344 @@
+---
+title: "CHDH SNA 1"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+---
+
+```{css, echo=FALSE}
+.question {
+  background-color: lightpink;
+  border: 3px solid red;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+-   Adjacency matrix, basic manipulation
+-   Network non-parametric approaches
+-   Ego-nets
+-   Network regression
+
+# Adjacency matrix
+
+## Basic definitions
+
+For a set of nodes $V=\{1,\ldots,n\}$ we define a set of ties as being
+un-ordered pairs of nodes, $\{i,j\} \in \{i,j\in V : i\neq j\}$. We can
+denote the set of all undordered pairs ${V}\choose{2}$, meaning that the
+ties or edges are two-element subsets of $V$, and the set of ties
+$E \subseteq {{V}\choose{2}}$.
+
+## Adjacency matrix
+
+For all $\{i,j\} \in {{V}\choose{2}}$, we define the tie-variables
+$x_{ij}$ as being indicators $$
+\begin{equation*}  
+x_{ij}= \left\{
+\begin{array}{lr}
+    1,&\text{if there is an edge between } i \text{ and } j\\
+    0,&\text{else}
+\end{array} 
+\right. 
+\end{equation*}
+$$
+
+We collect these in an $n \times n$ **adjacency matrix** $$
+X = \begin{bmatrix}
+x_{11} & x_{12} & x_{13} & \cdots & x_{1n}\\
+x_{21} & x_{22} & x_{23} & \cdots & x_{2n}\\
+x_{31} & x_{32} & x_{33} & \cdots & x_{3n}\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\
+x_{n1} & x_{n2} & x_{n3} & \cdots & x_{2n}\\
+\end{bmatrix}
+$$
+
+## Objectives
+
+This is an introduction to social networks using built-in functions in R
+and the packages `r 'sna'` and `r 'network'`. We will learn the
+
+-   basic features of the adjacency matrix represented as a `r 'matrix'`
+    object,
+    -   calculate the degrees of the nodes, and
+    -   calculate some fundamental descriptives of the network.
+-   We will then translate the network
+    -   from a `r 'matrix'` object to a `r 'network'` object in order to
+    -   plot the sociogram.
+
+For full details of the packages, see
+<https://cran.r-project.org/web/packages/sna/sna.pdf> and
+<https://cran.r-project.org/web/packages/network/network.pdf>. For
+accessile general R-help see <https://www.statmethods.net/> and for any
+kind of errors use <https://google.com>.
+
+This introduction is deliberately writen in **inelegant R**, using as
+basic functions as possible. Many packages offer sleeker and more
+userfriendly network routines, such as 'igraph'. In particular, I would
+like to recomend the packages of David Schooch
+<http://mr.schochastics.net/> for accessible and elegant network
+analysis in R. In general, basic plots in R (described in
+<https://www.statmethods.net/graphs/index.html>) are functional but more
+advanced and better looking plots can be acchieved through 'ggplot'.
+
+For basic concepts in network analysis see @robins2015doing and
+@borgatti2018analyzing. There is also a handy online bool
+<http://faculty.ucr.edu/~hanneman/nettext/> [@hanemanSNA].
+
+## Build your own network
+
+To use `r 'sna'`[@buttsSNA] and `r 'network'` [@buttsNETWORK] for the
+first time (*uncomment the install commmands*), install the packages
+
+```{r install, results='hide', warning=FALSE, message=FALSE}
+# install.packages("sna")
+# install.packages("network")
+```
+
+Once packages are installed, load them
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+```
+
+### The Matrix
+
+Create an empty **adjacency** matrix for `r 'n = 5'` nodes
+
+```{r adjmat, results='hide'}
+n <- 5
+ADJ <- matrix(0,n,n) # create a matrix with n rows and n columns and all values 0
+```
+
+Add ties $1 \rightarrow 2$, $1 \rightarrow 3$, $2 \rightarrow 3$,
+$3 \rightarrow 4$, and , $4 \rightarrow 5$
+
+```{r adjfill, results='hide'}
+ADJ[1,2] <- 1
+ADJ[1,3] <- 1
+ADJ[2,3] <- 1
+ADJ[3,4] <- 1
+ADJ[4,5] <- 1
+ADJ
+```
+
+To make the network **undirected**, add the ties $2 \rightarrow 1$,
+$3 \rightarrow 1$, $3 \rightarrow 2$, $4 \rightarrow 3$, and
+$5 \rightarrow 4$
+
+```{r adjfill2, results='hide'}
+ADJ[2,1] <- 1
+ADJ[3,1] <- 1
+ADJ[3,2] <- 1
+ADJ[4,3] <- 1
+ADJ[5,4] <- 1
+ADJ
+```
+
+#### Cells in the adjacency matrix and tie-variables
+
+In general the cell `r 'ADJ[i,j]'` corresponds to the tie-variable
+$X_{i,j}$. Here $x_{1,2}=1$
+
+```{r tievar, results='hide'}
+ADJ[1,2]
+```
+
+but, for example, $x_{1,4}=0$
+
+```{r tievar2, results='hide'}
+ADJ[1,4]
+```
+
+The ties of node $i=1$ is the $i$'th row
+
+```{r outties, results='hide'}
+ADJ[1,]
+```
+
+#### Density
+
+The adjcenacy matrix has
+
+```{r numcells, results='hide'}
+dim(ADJ)
+```
+
+rows and columns. This means that there are $n \times n$ cells in the
+adjacency matrix.
+
+```{r numcells2, results='hide'}
+dim(ADJ)[1]*dim(ADJ)[2]
+length(ADJ)
+```
+
+The $n$ diagonal elements $x_{11},x_{22},\ldots,x_{nn}$ are zero by
+definition, which means that there are $n \times n - n = n(n-1)$
+variables that can be non-zero, here
+
+```{r numcells3, results='hide'}
+dim(ADJ)[1]*dim(ADJ)[2] - n
+```
+
+> **Density**: How many variables are equal to 1 out of the total
+> posible?
+
+The total number of ones
+$$L = \sum_{i,j,i\neq j}x_{ij}=x_{12}+\cdots+x_{1n}+x_{21}+\cdots+x_{(n-1)n}$$
+is simply a count of the number of non-zero entries
+
+```{r numties, results='hide'}
+sum(ADJ)
+```
+
+The density thus is
+
+```{r density, results='hide'}
+sum(ADJ)/(n*(n-1))
+```
+
+and 50% of possible ties are present in the network.
+
+#### Degree
+
+> How many ties does a node have?
+
+The **degree** $d_i$ of a node $i$ is defined as the sum
+$d_i=\sum_{j}x_{i,j}=x_{i,2}+x_{i,2}+\cdots + x_{i,n}$. The degree of
+node $i=1$ is thus
+
+```{r deg1, results='hide'}
+sum(ADJ[1,])
+```
+
+and the degree of node $i=2$ is
+
+```{r deg2, results='hide'}
+sum(ADJ[2,])
+```
+
+#### Degree distribution
+
+Calculate the *column sum* of the adjacency matrix to get the vector of
+degrees (note the capital S)
+
+```{r degs, results='hide'}
+colSums(ADJ)
+```
+
+The **degree distribution** is the table of frequencies of degrees
+
+```{r degdist, results='hide'}
+table( colSums(ADJ) )
+```
+
+You can chart the degree distribution with a bar chart
+
+```{r degdistchart,results='hide',fig.show = 'hide'}
+plot( table( colSums(ADJ) ))
+```
+
+> You can use standard R-routines to explore the adjacency matrix
+
+For example finding what node (-s) have, say, degree 3
+
+```{r which, results='hide'}
+which(colSums(ADJ)==3)
+```
+
+Or subsetting the adjacency matrix to look only at nodes with degree 2
+or greater
+
+```{r subset, results='hide'}
+use <- which(colSums(ADJ)>=2) # for each row there will be a logical TRUE or FALSE
+ADJ[use,use]
+```
+
+#### Fun Fact: Linear algebra
+
+Most network metrics can be calculated using linear algebra. For
+example, if $X_{i,j}$ in $X$ tell you if $i$ and $j$ are directly
+connected, element $(XX)_{i,j}$ of the matrix product $XX$, tells you
+how many paths $i \rightarrow k \rightarrow j$ there are
+
+```{r 2path, results='hide'}
+ADJ %*% ADJ
+```
+
+Element $(XXX)_{i,j}$ of the matrix product $XXX$, tells you how many
+paths $i \rightarrow k \rightarrow h \rightarrow j$ there are
+
+```{r 3path, results='hide'}
+ADJ %*% ADJ %*% ADJ
+```
+
+------------------------------------------------------------------------
+
+### Network object
+
+Plotting the `r 'matrix'` object `r 'ADJ'` is not meaningful because R
+does not know that this is an adjacency matrix. To interpret `r 'ADJ'`
+as a network, translate the adjacency matrix to a `r 'network'` object
+
+```{r asnetwork, results='hide'}
+net <- as.network(ADJ, directed = FALSE)
+```
+
+NB: in the `r 'network'` package you use `r 'directed=FALSE'` in lieu of
+setting `r 'mode'` equal to `r 'graph'`.
+
+The new object `r 'net'` is an object of type
+
+```{r netobj, results='hide'}
+class(net)
+```
+
+While printing `r 'ADJ'` to screen just gives you the matrix, priniting
+`r 'net'` gives you a summary of the network
+
+```{r netsummary, results='hide'}
+net
+```
+
+#### Plot sociogram
+
+When plotting a `r 'network'` object, R knows that you want to plot the
+**sociogram**
+
+```{r plotnet,results='hide',fig.show = 'hide'}
+plot( net )
+```
+
+For various plotting option see `r '?plot.network'`. For example, set
+node-size to degree, include labels, and set different colours
+
+```{r plotnet2,results='hide',fig.show = 'hide'}
+plot( net , # the network object
+      vertex.cex = degree(net) , # how should nodes (vertices) be scaled
+      displaylabels =  TRUE, # display the labels of vertices
+      vertex.col = c('red','blue','grey','green','yellow'))
+```
+
+Note that `r 'degree(net)'` is a built-in function in `r 'network'` for
+calculating the degrees of the nodes. The next step will explore more of
+these functions.
+
+# Non-parametric
+
+# Ego-nets
+
+# Network regression
+
+# References
