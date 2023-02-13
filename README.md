@@ -46,7 +46,11 @@ For details on venue and timings see [Eventbrite](https://www.eventbrite.com/e/n
 
 ### Context
 
+By network data, we will assume data where we have observations on binary tie-variables among a fixed set of nodes. In a typical dataset, network ties will be elicited through name-generators,[[1]](#1) such as
 
+> Anongs the people in your organisation, list the people that you go to for advice
+
+There are many other ways in which to collect and `operationalise' network ties. Here we will not deal with network inference such as inferring causal graphs or other network represenations
 
 
 ### R-Prerequisites
