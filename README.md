@@ -52,8 +52,11 @@ By network data, we will assume data where we have observations on binary tie-va
 
 There are many other ways in which to collect and `operationalise' network ties. Here we will not deal with network inference such as inferring causal graphs or other network represenations
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### R-Prerequisites
+
+There are plenty of tutorials and introductions to network analysis in R and we refer, for example to Borgatti et al (2022)[[2]](#2) for a comprehensive treatment (see also the accompanyhing online supplementary material)
 
 No particular R-skills are expected. You should be able to download the RMarkdown files and run them locally. The RMarkdown files will read any data straight from ["https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"]("https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"). No fancy R-wrappers will be used and the code is written entirely in base R and [Quick-R](https://www.statmethods.net/)
 should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
@@ -71,7 +74,9 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 * RSiena
   ```sh
   install.packages(RSiena)
-  
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## References
 <a id="1">[1]</a> 
 Robins, G. (2015).
