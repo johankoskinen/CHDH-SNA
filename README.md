@@ -3,6 +3,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/johankoskinen/CHDH-SNA">
+      <img src="images/smallnet.jpg" alt="Logo" width="120" height="80">
    </a>
 
   <h3 align="center">Complex Human Data Hub - Social Network Analysis</h3>
