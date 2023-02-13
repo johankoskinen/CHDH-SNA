@@ -13,6 +13,7 @@
     <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/data"><strong>Explore the data »</strong></a>
     <br />
+    <a href="https://github.com/johankoskinen/CHDH-SNA/Markdowns"><strong>Explore the R-code »</strong></a>
     <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/issues">Report Bug</a>
     ·
