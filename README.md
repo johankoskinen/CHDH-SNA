@@ -42,13 +42,14 @@ For details on venue and timings see [Eventbrite](https://www.eventbrite.com/e/n
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+["https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/"]("https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/")
 
 ### Context
 
-
+[https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/)
 [Quick-R](https://www.statmethods.net/)
+
+
 
 ### Prerequisites
 
