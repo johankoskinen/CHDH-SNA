@@ -77,6 +77,15 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- CONTACT -->
+## Contact
+
+Johan Koskinen - [@JHK](https://twitter.com/drjohankoskinen) - johan.koskinen@stat.su.se
+
+Project Link: [https://github.com/johankoskinen/CDHD-SNA](https://github.com/johankoskinen/CDHD-SNA)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## References
 <a id="1">[1]</a> 
 Robins, G. (2015).
