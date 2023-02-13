@@ -55,11 +55,19 @@ No particular R-skills are expected. You should be able to download the RMarkdow
 should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
 [https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/) contains all the resources you will ever need.
 This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  
 
+You *will*, however, need to come with a laptop with R and R-studio installed. In addition, you will want to install the packages
+* sna
+  ```sh
+  install.packages(sna)
+* network
+  ```sh
+  install.packages(network)  
+  
+* RSiena
+  ```sh
+  install.packages(RSiena)
+  
 ## References
 <a id="1">[1]</a> 
 Robins, G. (2015).
