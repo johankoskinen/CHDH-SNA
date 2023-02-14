@@ -72,7 +72,7 @@ You will find it in  [CHDH-SNA/Markdowns](https://github.com/johankoskinen/CHDH-
 No fancy R-wrappers will be used and the code is written entirely in base R and [Quick-R](https://www.statmethods.net/)
 should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
 [https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/) contains all the resources you will ever need.
-This is an example of how to list things you need to use the software and how to install them.
+
 
 You *will*, however, need to come with a laptop with R and R-studio installed. In addition, you will want to install the packages
 * sna
