@@ -1,0 +1,1518 @@
+---
+title: "CHDH SNA 1"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+---
+
+```{css, echo=FALSE}
+.question {
+  background-color: lightpink;
+  border: 3px solid red;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+-   Adjacency matrix, basic manipulation
+-   Network non-parametric approaches
+-   Ego-nets
+-   Network regression
+
+# Adjacency matrix
+
+## Basic definitions
+
+For a set of nodes $V=\{1,\ldots,n\}$ we define a set of ties as being
+un-ordered pairs of nodes, $\{i,j\} \in \{i,j\in V : i\neq j\}$. We can
+denote the set of all undordered pairs ${V}\choose{2}$, meaning that the
+ties or edges are two-element subsets of $V$, and the set of ties
+$E \subseteq {{V}\choose{2}}$.
+
+## Adjacency matrix
+
+For all $\{i,j\} \in {{V}\choose{2}}$, we define the tie-variables
+$x_{ij}$ as being indicators $$
+\begin{equation*}  
+x_{ij}= \left\{
+\begin{array}{lr}
+    1,&\text{if there is an edge between } i \text{ and } j\\
+    0,&\text{else}
+\end{array} 
+\right. 
+\end{equation*}
+$$
+
+We collect these in an $n \times n$ **adjacency matrix** $$
+X = \begin{bmatrix}
+x_{11} & x_{12} & x_{13} & \cdots & x_{1n}\\
+x_{21} & x_{22} & x_{23} & \cdots & x_{2n}\\
+x_{31} & x_{32} & x_{33} & \cdots & x_{3n}\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\
+x_{n1} & x_{n2} & x_{n3} & \cdots & x_{2n}\\
+\end{bmatrix}
+$$
+
+## Objectives
+
+This is an introduction to social networks using built-in functions in R
+and the packages `r 'sna'` and `r 'network'`. We will learn the
+
+-   basic features of the adjacency matrix represented as a `r 'matrix'`
+    object,
+    -   calculate the degrees of the nodes, and
+    -   calculate some fundamental descriptives of the network.
+-   We will then translate the network
+    -   from a `r 'matrix'` object to a `r 'network'` object in order to
+    -   plot the sociogram.
+
+For full details of the packages, see
+<https://cran.r-project.org/web/packages/sna/sna.pdf> and
+<https://cran.r-project.org/web/packages/network/network.pdf>. For
+accessile general R-help see <https://www.statmethods.net/> and for any
+kind of errors use <https://google.com>.
+
+This introduction is deliberately writen in **inelegant R**, using as
+basic functions as possible. Many packages offer sleeker and more
+userfriendly network routines, such as 'igraph'. In particular, I would
+like to recomend the packages of David Schooch
+<http://mr.schochastics.net/> for accessible and elegant network
+analysis in R. In general, basic plots in R (described in
+<https://www.statmethods.net/graphs/index.html>) are functional but more
+advanced and better looking plots can be acchieved through 'ggplot'.
+
+For basic concepts in network analysis see @robins2015doing and
+@borgatti2018analyzing. There is also a handy online bool
+<http://faculty.ucr.edu/~hanneman/nettext/> [@hanemanSNA].
+
+## Build your own network
+
+To use `r 'sna'`[@buttsSNA] and `r 'network'` [@buttsNETWORK] for the
+first time (*uncomment the install commmands*), install the packages
+
+```{r install, results='hide', warning=FALSE, message=FALSE}
+# install.packages("sna")
+# install.packages("network")
+```
+
+Once packages are installed, load them
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+```
+
+### The Matrix
+
+Create an empty **adjacency** matrix for `r 'n = 5'` nodes
+
+```{r adjmat, results='hide'}
+n <- 5
+ADJ <- matrix(0,n,n) # create a matrix with n rows and n columns and all values 0
+```
+
+Add ties $1 \rightarrow 2$, $1 \rightarrow 3$, $2 \rightarrow 3$,
+$3 \rightarrow 4$, and , $4 \rightarrow 5$
+
+```{r adjfill, results='hide'}
+ADJ[1,2] <- 1
+ADJ[1,3] <- 1
+ADJ[2,3] <- 1
+ADJ[3,4] <- 1
+ADJ[4,5] <- 1
+ADJ
+```
+
+To make the network **undirected**, add the ties $2 \rightarrow 1$,
+$3 \rightarrow 1$, $3 \rightarrow 2$, $4 \rightarrow 3$, and
+$5 \rightarrow 4$
+
+```{r adjfill2, results='hide'}
+ADJ[2,1] <- 1
+ADJ[3,1] <- 1
+ADJ[3,2] <- 1
+ADJ[4,3] <- 1
+ADJ[5,4] <- 1
+ADJ
+```
+
+#### Cells in the adjacency matrix and tie-variables
+
+In general the cell `r 'ADJ[i,j]'` corresponds to the tie-variable
+$X_{i,j}$. Here $x_{1,2}=1$
+
+```{r tievar, results='hide'}
+ADJ[1,2]
+```
+
+but, for example, $x_{1,4}=0$
+
+```{r tievar2, results='hide'}
+ADJ[1,4]
+```
+
+The ties of node $i=1$ is the $i$'th row
+
+```{r outties, results='hide'}
+ADJ[1,]
+```
+
+#### Density
+
+The adjcenacy matrix has
+
+```{r numcells, results='hide'}
+dim(ADJ)
+```
+
+rows and columns. This means that there are $n \times n$ cells in the
+adjacency matrix.
+
+```{r numcells2, results='hide'}
+dim(ADJ)[1]*dim(ADJ)[2]
+length(ADJ)
+```
+
+The $n$ diagonal elements $x_{11},x_{22},\ldots,x_{nn}$ are zero by
+definition, which means that there are $n \times n - n = n(n-1)$
+variables that can be non-zero, here
+
+```{r numcells3, results='hide'}
+dim(ADJ)[1]*dim(ADJ)[2] - n
+```
+
+> **Density**: How many variables are equal to 1 out of the total
+> posible?
+
+The total number of ones
+$$L = \sum_{i,j,i\neq j}x_{ij}=x_{12}+\cdots+x_{1n}+x_{21}+\cdots+x_{(n-1)n}$$
+is simply a count of the number of non-zero entries
+
+```{r numties, results='hide'}
+sum(ADJ)
+```
+
+The density thus is
+
+```{r density, results='hide'}
+sum(ADJ)/(n*(n-1))
+```
+
+and 50% of possible ties are present in the network.
+
+#### Degree
+
+> How many ties does a node have?
+
+The **degree** $d_i$ of a node $i$ is defined as the sum
+$d_i=\sum_{j}x_{i,j}=x_{i,2}+x_{i,2}+\cdots + x_{i,n}$. The degree of
+node $i=1$ is thus
+
+```{r deg1, results='hide'}
+sum(ADJ[1,])
+```
+
+and the degree of node $i=2$ is
+
+```{r deg2, results='hide'}
+sum(ADJ[2,])
+```
+
+#### Degree distribution
+
+Calculate the *column sum* of the adjacency matrix to get the vector of
+degrees (note the capital S)
+
+```{r degs, results='hide'}
+colSums(ADJ)
+```
+
+The **degree distribution** is the table of frequencies of degrees
+
+```{r degdist, results='hide'}
+table( colSums(ADJ) )
+```
+
+You can chart the degree distribution with a bar chart
+
+```{r degdistchart,results='hide',fig.show = 'hide'}
+plot( table( colSums(ADJ) ))
+```
+
+> You can use standard R-routines to explore the adjacency matrix
+
+For example finding what node (-s) have, say, degree 3
+
+```{r which, results='hide'}
+which(colSums(ADJ)==3)
+```
+
+Or subsetting the adjacency matrix to look only at nodes with degree 2
+or greater
+
+```{r subset, results='hide'}
+use <- which(colSums(ADJ)>=2) # for each row there will be a logical TRUE or FALSE
+ADJ[use,use]
+```
+
+#### Fun Fact: Linear algebra
+
+Most network metrics can be calculated using linear algebra. For
+example, if $X_{i,j}$ in $X$ tell you if $i$ and $j$ are directly
+connected, element $(XX)_{i,j}$ of the matrix product $XX$, tells you
+how many paths $i \rightarrow k \rightarrow j$ there are
+
+```{r 2path, results='hide'}
+ADJ %*% ADJ
+```
+
+Element $(XXX)_{i,j}$ of the matrix product $XXX$, tells you how many
+paths $i \rightarrow k \rightarrow h \rightarrow j$ there are
+
+```{r 3path, results='hide'}
+ADJ %*% ADJ %*% ADJ
+```
+
+------------------------------------------------------------------------
+
+### Network object
+
+Plotting the `r 'matrix'` object `r 'ADJ'` is not meaningful because R
+does not know that this is an adjacency matrix. To interpret `r 'ADJ'`
+as a network, translate the adjacency matrix to a `r 'network'` object
+
+```{r asnetwork, results='hide'}
+net <- as.network(ADJ, directed = FALSE)
+```
+
+NB: in the `r 'network'` package you use `r 'directed=FALSE'` in lieu of
+setting `r 'mode'` equal to `r 'graph'`.
+
+The new object `r 'net'` is an object of type
+
+```{r netobj, results='hide'}
+class(net)
+```
+
+While printing `r 'ADJ'` to screen just gives you the matrix, priniting
+`r 'net'` gives you a summary of the network
+
+```{r netsummary, results='hide'}
+net
+```
+
+#### Plot sociogram
+
+When plotting a `r 'network'` object, R knows that you want to plot the
+**sociogram**
+
+```{r plotnet,results='hide',fig.show = 'hide'}
+plot( net )
+```
+
+For various plotting option see `r '?plot.network'`. For example, set
+node-size to degree, include labels, and set different colours
+
+```{r plotnet2,results='hide',fig.show = 'hide'}
+plot( net , # the network object
+      vertex.cex = degree(net) , # how should nodes (vertices) be scaled
+      displaylabels =  TRUE, # display the labels of vertices
+      vertex.col = c('red','blue','grey','green','yellow'))
+```
+
+Note that `r 'degree(net)'` is a built-in function in `r 'network'` for
+calculating the degrees of the nodes. The next step will explore more of
+these functions.
+
+## Network position
+
+Continue with the network that we constructed previously in Minimal Intro.
+
+Recall, basic properties of this network are 
+```{r summarynet, results='hide'}
+net
+```
+### Degree centrality
+
+> What nodes have more ties?
+
+
+```{r degredent, results='hide'}
+degree( net )
+```
+
+This is vector with the degree centrality for each node in the network. Degree centrality is also called Freeman degree centrality [@freeman1978centrality].
+
+### Betweeness centrality
+
+Betweeness is related to connectivity and flow in a network [@freeman1978centrality;@borgatti2006graph]. This measure requires that you know the network structure of the entire network.
+
+```{r between, results='hide'}
+betweenness( net , gmode ='graph' )
+```
+
+Node 3 is on the *shortest path* between 4 pairs of nodes:
+
+Start node | Step 2 | Step 3 | Step 4
+:--------: | :------: | :-----:  | :-----:
+1 | **3** | 4
+1 |**3**  | 4 | 5
+2 | **3**  | 4
+2 | **3**  | 4 | 5
+
+
+> These nodes will only be able to 'communicate' via 3
+
+### Brokers
+
+A cutpoint is a node that when removed results in the network having more components. In simpler terms, a cutpoint is a node that connects otherwise dissconnected nodes
+
+```{r cutpoint, results='hide'}
+cutpoints( net , mode = "graph")
+```         
+
+The extent to which nodes broker between other nodes has been the fucus of a large part of Ron Burt's career. He proposes some elaborations for measuring bokerness in @burt2009structural called *constraint* and *effective size*. These are *local* measures that do not, as opposed to cutpoints and betweeness, require that you know the network structure of the entire network.
+
+***
+
+
+### Triad census
+The triad census tabulates different types of triangles or tripples [@davis1967structure; @hollandMAN]
+
+
+0 edges | 1 edge | 2 edges | 3 edges
+------- | ------ | ------- | ------
+$\sharp$ tripels | $\sharp$ tripels | $\sharp$ tripels | $\sharp$ tripels 
+
+
+```{r triadc, results='hide'}
+triad.census( net , mode = "graph")
+```   
+
+There are 6 tripples, with one tie. For example the *subgraph* consisting of nodes 1,4 , and 5.
+
+```{r ptriad1,results='hide',fig.show = 'hide'}
+plot(as.network( ADJ[c(1,4,5),c(1,4,5)] , directed = FALSE),
+     vertex.cex = degree(net)[c(1,4,5)],
+     vertex.col = c('red','blue','grey','green','yellow')[c(1,4,5)])
+```   
+
+**Open triad**: There are 3 tripples, with two ties. For example the *subgraph* consisting of nodes 3, 4 , and 5.
+
+```{r ptriad2,results='hide',fig.show = 'hide'}
+plot(as.network( ADJ[c(3,4,5),c(3,4,5)] , directed = FALSE),
+     vertex.cex = degree(net)[c(3,4,5)],
+     vertex.col = c('red','blue','grey','green','yellow')[c(3,4,5)])
+```   
+
+**Closed triad**: There is 1 tripple, with three ties. For example the *subgraph* consisting of nodes 1, 2 , and 3.
+
+```{r ptriad3,results='hide',fig.show = 'hide'}
+plot(as.network( ADJ[c(1,2,3),c(1,2,3)] , directed = FALSE ),
+     vertex.cex = degree(net)[c(1,2,3)],
+     vertex.col = c('red','blue','grey','green','yellow')[c(1,2,3)] )
+```   
+
+
+### Cliques
+A $k$-clique is a maximally connected subgraph. This means that a $k$-clique is a network with $k$ nodes that are all connected to each other. In ``r 'net'`` nodes 5 and 4 consitute a 2-clique and nodes 1, 2, and 3 constitute a 3-clique. Like the triad census, we can calulate a clique census for a graph
+
+```{r cliquec, results='hide'}
+cc <- clique.census( net , mode = "graph")
+```   
+
+The object ``r 'cc'`` is of class
+```{r cliqueclass, results='hide'}
+class(cc)
+``` 
+
+The list has the following objects
+```{r cliquenames, results='hide'}
+names(cc)
+``` 
+
+
+The object ``r 'clique.count'`` lists the membership of nodes in cliques
+```{r cliqumem, results='hide'}
+cc$clique.count
+```
+
+A list of lists of cliques and their members is provided in 
+```{r cliques, results='hide'}
+cc$cliques
+```
+
+Note that subgraphs of cliques are not listed. For example, the 2-cliques with nodes 1 and 2 is not listed as both are part of the larger 3-clique. 
+
+## Position directed
+
+This is an introduction to anylisng **directed** networks in R using the packages ``r 'sna'`` and ``r 'network'``. We will revisit the *adjacency matrix* and the notion of *tie variables* for directed networks.
+
+We will learn the basic
+
+* differences between in- and out-degree
+* definitions of the basic subgraphs
+  + dyads
+  + triads
+
+We will use a dataset of 73 high school pupils collected by James @coleman1964introduction that comes with the package ``r 'sna'`.
+
+For full details of the packages, see <https://cran.r-project.org/web/packages/sna/sna.pdf> and <https://cran.r-project.org/web/packages/network/network.pdf>.
+
+
+The background of, and description, of the dataset is provided in the helpfile
+```{r coledat, eval=FALSE}
+?coleman
+```
+
+Now load the network
+```{r loadcoldat, results='hide'}
+data(coleman)
+```
+
+### The adjacency matrix
+
+> What do I have in my workspace and what did I load?
+
+The function ``r 'data()'`` loaded something. Use the general purpuse command ``r 'ls()'`` to list what is in your workspace
+```{r workspace, results='hide'}
+ls()
+```
+
+This is not one adjacency matrix but
+```{r classcol, results='hide'}
+class(coleman)
+```
+
+As described in the help file this is an array with 2 $\times$  adjacency matrices of dimensions $73 \times 73$
+```{r dimscol, results='hide'}
+dim(coleman)
+```
+
+The individual slices are matrices
+```{r matcol, results='hide'}
+class(coleman[1,,])
+class(coleman[2,,])
+```
+
+
+You can print ``r 'coleman[1,,]'`` and ``r 'coleman[2,,]'`` to screen to view the adjacency matrices (but that will just be a lot of ones and zeros, in particular $2 \times 73 \times 73$ ones and zeros). You can visualise the adjacency matrices in these matrix plots
+```{r plotmatr,results='hide',fig.show = 'hide'}
+par( mfrow = c(1,2))
+plot.sociomatrix( coleman[1,,] , drawlab=FALSE , drawlines = FALSE, xlab = 'FALL')
+plot.sociomatrix( coleman[2,,] , drawlab=FALSE , drawlines = FALSE, xlab = 'SPRING')
+```
+
+In the adjacency matrix, rows record the ties *sent*, and columns record the ties *received*. Student 1 has the out-tie variables $x_{1,2},x_{1,3},\ldots,x_{1,n}$
+```{r outtiesS1, results='hide'}
+ coleman[1,1,]
+```
+
+For example, that ``r 'coleman[1,1,14]'`` is 1 means that student 1 has a tie to student 14, and that ``r 'coleman[1,1,2]'`` is 0 means that student 1 does not have a tie to student 2.
+
+#### Outdegree
+
+Taking the sum of the outties 
+```{r outdeg1, results='hide'}
+ sum(coleman[1,1,])
+```
+gives us student 1's **outdegree**, $d_i^o= \sum_{j,j\neq i}x_{i,j}$.
+
+To get the outdegree of all pupils, sum across columns for all rows
+```{r outdegs, results='hide'}
+ rowSums(coleman[1,,])
+```
+
+And, like for un-directed networks, we can chart the the degree distribution
+```{r outdegdis,results='hide',fig.show = 'hide'}
+ plot( table (rowSums(coleman[1,,]) ))
+```
+
+
+
+#### Indegree
+
+The ties a student has received is the column of that particular student. Student 1 has received the tie variables $x_{2,1},x_{3,1},\ldots,x_{n,1}$
+```{r inties, results='hide'}
+ coleman[1,,1]
+```
+
+For example, that ``r 'coleman[1,14,1]'`` is 0 means that student 1 has not received a tie *from* student 14.
+
+To get the **indegree** of all pupils sum across rows for all columns
+```{r indegs, results='hide'}
+ colSums(coleman[1,,])
+```
+
+And, like for un-directed networks, we can chart the the indegree distribution
+```{r indegdis, results='hide',results='hide',fig.show = 'hide'}
+ plot( table (colSums(coleman[1,,]) ))
+```
+
+> The number of ties sent and received are not the same!
+
+For example, student 1 has nominated 5 other people but student 1 has not been nominated back at all. Plotting the outdegrees against the indegrees
+```{r outvin, results='hide',results='hide',fig.show = 'hide'}
+ plot( jitter(rowSums(coleman[1,,]) ) , jitter( colSums(coleman[1,,]) ) ) 
+```
+
+reveal that some send more than they receive, and some send fewer than they receive.
+
+One reason for this is that some pairs are assymetric and other pairs are symmetric in their choices [there are of course other possible explanations @igarashi2020overchoosing]
+
+### Dyads and reciprocity
+A **dyad** is a pair of nodes and their ties $(X_{i,j}X_{j,i})$ to eachother. To investigate whether pairs are symmetric or assymetric, consider e.g. that 1 nominated 14 but 14 did not nominate 1 back - this pair is assymetric.
+```{r assymex, results='hide'}
+ coleman[1,1,14]
+ coleman[1,14,1]
+```
+The dyad 19 and 4
+```{r mutex, results='hide'}
+ coleman[1,4,19]
+ coleman[1,19,4]
+```
+is symmetric, or **reciprocal** - we call this a **mutual dyad**.
+
+In general we can distinguish between dyads that are *Mutual*, *Assymetric*, and *Null*  [@hollandMAN]:
+
+```{r MANplot,results='hide',fig.show = 'hide'}
+par ( mfrow = c(1,3))
+plot( as.network(coleman[1,c(4,19),c(4,19)] ),main='Mutual' ,label = c(4,19), usecurve = TRUE, edge.curv = 0.01, arrowhead.cex = 2.5, vertex.cex = degree(coleman[1,,])[c(4,19)] ) 
+plot( as.network(coleman[1,c(1,14),c(1,14)] ),main='Assymetric' ,label = c(1,14), arrowhead.cex = 2.5, vertex.cex = degree(coleman[1,,])[c(1,14)] ) 
+plot( as.network(coleman[1,c(1,2),c(1,2)] ),main='Null' ,label = c(1,2) , vertex.cex = degree(coleman[1,,])[c(1,2)] ) 
+```
+
+
+#### Fun Fact: Linear algebra
+
+Recall that the inner product of a matrix $X$ with itself $X$ has entries $(XX)_{i,j}=\sum_{k}X_{i,k} X_{ k,j }$. Consequently, $\mathrm{tr}(XX)$ gives you twice the number of reciprocated dyads. There is no standard command for trace in R, but you can take the ``r 'sum()'`` of the diagonal ``r 'diag()'`` of the matrix product, e.g. for adjacency matrix ``r 'A'``, ``r 'sum( diag( A %*% A ))'``. The standard product ``r '*'`` in R is the dot product $X \odot X^{\top}$ where  $(X \odot X^{\top})_{i,j}=X_{i,j} X_{ i,j }$. Consequently for adjacency matrix ``r 'A'``,  ``r 'A * t(A)'`` is the matrix of reciprochated ties.
+
+
+### Dyad census
+The **dyad census** tabulates the number of dyads that are Mutual, Assymetric, and Null
+```{r dyadcens, results='hide'}
+ dyad.census(coleman[1,,])
+```
+
+#### Fun Fact: census is complete enumeration of dyads
+
+Note that in the Coleman example, the total number of M, A, and N dyads sum up to
+```{r totdyadcens, results='hide'}
+ 62 + 119 +  2447
+```
+
+which is exactly equal to $n(n-1)/2=73\times72/2=2628$ - this is the total number on (un-ordered) pairs, the number of cells in the upper diagonal of the adjacency matrix.
+
+### Triads
+For tripplets in directed networks, there many different kinds. For *open triads*, we could for example consider the three different types you can achieve with 0 Mutual dyads, 2 Assymetric dyads, and 1 Null dyad.
+```{r plotopen,results='hide',fig.show = 'hide'}
+par( mfrow = c(1,3))
+plot( as.network( matrix(c(0,1,0,0,0,1,0,0,0),3,3 ,byrow=TRUE) ), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE, main='021C')
+plot( as.network( matrix(c(0,1,0,0,0,0,0,1,0),3,3 ) ), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE, main='021D')
+plot( as.network( matrix(c(0,0,0,1,0,1,0,0,0),3,3 ) ), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE,  main='021U')
+```
+
+The triples are labeled by the number of Mutual, Assymetric, and Null dyads - the so-called MAN labeling scheme. Here, the 'C', 'D', and 'U' distinguish between 'Cyclic', 'Down', and 'Up'.
+
+
+For closed triands consider the Transitive ('T'), Cyclic ('C'), and complete closed triads
+
+```{r plotclosed,results='hide',fig.show = 'hide'}
+par( mfrow = c(1,3))
+plot( as.network( matrix(c(0,1,0,0,0,1,1,0,0),3,3 ,byrow=TRUE) ), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE, main='030C')
+plot( as.network( matrix(c(0,1,1,0,0,0,0,1,0),3,3 ) ,byrow=TRUE), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE, main='030T')
+plot( as.network( matrix(c(0,1,1,1,0,1,1,1,0),3,3 )  ,byrow=TRUE), coord = matrix(c(0,0,5,10,10,0) ,3,2,byrow=TRUE) ,arrowhead.cex = 2.5, vertex.cex =3 , jitter = FALSE,  main='300', usecurve = TRUE, edge.curv = 0.01)
+```
+
+When considering the potential interpretation of these closed triads, imagine scenarios where ties reflect 'liking', 'look up to', 'give orders', 'passing on information', and how these structures would be reflected in status, chain of command, access to information, etc.
+
+### Triad census
+
+In total there are 16 types of triangles, all of which are labelled using the MAN labeling scheme  [@hollandMAN]. For the Coleman data, we calulate the **triad census** as
+
+```{r triadcens, results='hide'}
+ triad.census(coleman[1,,])
+```
+
+#### Fun Fact: census is complete enumeration of triads
+
+Note that in the Coleman example, the total number triads
+```{r tottriadcens, results='hide'}
+sum(triad.census(coleman[1,,]))
+```
+
+which is exactly equal to 
+$$\binom{n}{3}= \frac{n(n-1)(n-1)}{(3\times 2)}=73\times72\times71/6=62196$$
+- this is the total number on (un-ordered) tripplets, the number of ways in which you can chose 3 element subsets out of a 73 element set.
+
+### Plotting the network
+
+Plotting the sociogram of the network does not differ from the undirected case, with the exception that the ties are now represented by arrows.
+```{r plotcole,results='hide',fig.show = 'hide'}
+plot( as.network( coleman[1,,] , directed= TRUE), # the network object
+      vertex.cex = degree(coleman[1,,], cmode = 'indegree')/5 + .2 )
+```
+
+The size of a node here is set proportional to the indegree centrality. 
+
+> There are two large 'clusters' of nodes that are connected within but not between - these are two **components**
+
+
+# Non-parametric
+Using the data we downloaded and formatted in the `Data-Formatting.Rmd` vignette, we will here investigate how much these (undirected) networks differ from random networks. Analogously, we might ask what features of the networks are not guided by chance.
+
+Make sure that you have loaded the required libraries but also load `ergm()`
+
+```{r loadergm, results='hide', warning=FALSE, message=FALSE}
+library("ergm")
+```
+
+### Load formatted data
+
+
+```{r loaddata}
+load(url("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/undirected.RData"))
+ls()#list all the objects you downloaded
+```
+
+> The object `net.profiles` contains a number of formatted networks along with some network summary measures
+
+```{r}
+names(net.profiles)
+```
+
+### Some notation
+
+We let the set of $n$ nodes be $V = \{1,\ldots,n \}$, and we define the symmetric adjacency matrix $X=(X_{ij})_{ij \in V^{(2)}}$, where the non-redundant pairs are $\mathcal{N} = { V \choose 2}$, with elements
+
+$$ 
+X_{ij}= \left\{
+\begin{array}{lr}
+	1,&\text{if there is a tie from } i \text{ to } j, i,j \in V\\
+	0,&\text{else}
+\end{array} 
+\right. {\text{,}}
+$$
+
+
+## Completely random graph
+Assume that we independently for each pair, $\{i,j\}$, decided if the tie existed by tossing a fair coin. This means that, *independently* for all  $\{i,j\} \in \mathcal{N}$
+$$
+\Pr (X_{ij}=1) = 0.5
+$$
+In ``r 'sna'``, the function ``r 'rgraph'`` generates random graphs.
+
+### Padget's business network
+Generate a $n=16$ completely random graph and compare it to the @padgett1993robust Florentine families business network
+
+#### Generate random network
+
+We will generate a network that only has $n$ in common with the Padgett data set.
+
+```{r padgettgit, results='hide'}
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+n <- net.profiles$net.size[ row.index ]
+g <- rgraph(n,#size of the network
+            m=1,# number of networks to generate
+            tprob=0.5,# tie probability
+            mode="graph") # undirected (graph) or directed (digraph)
+g.net <- as.network(g,directed=FALSE)# 'sna' give you a matrix
+gden( padgbus.net )# observed density
+gden(g.net)# density 
+```
+
+Now we can compare what a network would look like if ties were formed completely at random with our observed network.
+
+#### Plot and compare
+
+```{r plotpadgettgit}
+par(mfrow=c(1,2))
+plot(padgbus.net)
+plot(g.net)
+```
+
+> Does it look more 'random' than the Padgett network?
+
+This is only *one* random network, maybe it looks different by chance. Generate $m = 100$ networks
+
+```{r randompadgett, results='hide'}
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+n <- net.profiles$net.size[ row.index ]
+g100 <- rgraph(n,#size of the network
+            m=100,# number of networks to generate
+            tprob=0.5,# tie probability
+            mode="graph") # undirected (graph) or directed (digraph)
+```
+
+#### Calculate metrics
+
+Any metric that we calculate for the *observed* network we can calculate for a *random* network
+
+```{r padgetstructsrgraph}
+par( mfrow  = c(1,3) )
+hist( gden( g100) , # the density for each of the 100 random networks
+      xlim=range( gden( g100 ), 
+                  gden( padgbus.net ) ) , main='density') 
+abline( v=gden( padgbus.net ),col='red' )# the observed density for reference
+
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+degrees <-degree(g100,g=c(1:100), cmode='indegree')# you can calculate the degree distributions for all graphs
+deg.sist <- cbind( matrix( colSums(degrees==0),100,1),
+                  t(apply(degrees,2,function(x) tabulate(x, nbins=max.deg) ) ) )# when tabulating we need to add the number of isolates 
+matplot(c(0:(max.deg)), t(deg.sist) ,
+        type ='l',
+        main='degree distribution' )
+lines(c(0:(max.deg)),degree.dist[row.index,c(2:(max.deg+2))],col='grey',lwd=3)
+
+triads <- triad.census( g100 , mode='graph')[,4]# CHANGE
+hist(triads ,
+     xlim= range( triads , net.profiles$net.closed.triad[ row.index ] ),
+     main = 'closed triads')
+abline( v=net.profiles$net.closed.triad[ row.index ],col='red' )# the observed density for reference
+
+```
+
+Clearly, since the random networks are *too dense*, the degree distributions are also different from the observed network, with nodes on average having a higher degree. But
+
+> despite how dense the networks are, there are too many triangles but is that because we have so many more ties???
+
+#### Fixed density: implications
+
+Will a random network with density $0.5$ resemble any networks?
+
+Plot the densities for the observed networks as a function of size
+
+```{r structuresum}
+
+plot( net.profiles$net.size[order(net.profiles$net.size)],
+      net.profiles$net.dens[order(net.profiles$net.size)],
+      type='b',
+      xlab = 'network size',ylab = 'density',ylim=range(net.profiles$net.dens,.55))
+abline(h=0.5, col='red')# reference line for the completely random graphs
+
+```
+
+> fixing the density at 0.5 irrespective of network size give unrealisically dense networks
+
+## Density conditioned graph
+
+If we do not get density right, we won't get anything righ. We introduce a random graph that fixes the density.
+
+### Definition
+Let $L(x) = \sum_{i<j}x_{ij}$ be the number of edges in a graph. The number of graphs with exactly $k$ edges
+$$
+\mathcal{X}_k= \{ x \in \mathcal{X} : L(x)=k \}
+$$
+is given by ${ M \choose k}$, where $M= { n \choose 2}$, and consequently the conditional distribution
+$$
+\Pr(X=x \mid L(x)= k ) = \frac{1}{{ M \choose k}}
+$$
+
+Note that are no longer deciding independently for each pair if there is a tie or not, rather we select $k$ pairs at random from the total set of pairs and decide that they will have tie.
+
+We refer to this model as $X \thicksim U \mid L(X)= k$.
+
+
+In ``r 'sna'``, the function ``r 'rgnm'`` generates random graphs with exactly the same number of ties as the observed network (same density)
+
+### Florentine families
+
+#### Simulate graphs
+```{r crandompadgett, results='hide'}
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+ 
+cg100 <- rgnm(n =100,# number of networks to generate
+            nv=net.profiles$net.size[ row.index ],#size of the network
+            m = net.profiles$net.ties[ row.index ],# number of edges
+            mode="graph") # undirected (graph) or directed (digraph)
+```
+
+#### Plot random
+
+Plot the observed network and *one* of the simulated networks
+
+```{r uplotpadgettgit}
+par(mfrow=c(1,2))
+plot(padgbus.net)
+plot(as.network(cg100[1,,],directed=FALSE ))
+```
+
+> Does the random graph look more like the empirical graph?
+
+#### Calculate metrics on random networks
+
+Any metric that we calculate for the *observed* network we can calculate for a *random* network. Calculate density, degree distribution, and triangles for all 100 networks and plot and compare
+
+```{r cpadgetstructsrgraph}
+par( mfrow  = c(1,3) )
+hist( gden( cg100) , # the density for each of the 100 random networks
+      xlim=range( gden( cg100 ), 
+                  gden( padgbus.net ) ) , main='density') 
+abline( v=gden( padgbus.net ),col='red' )# the observed density for reference
+
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+degrees <-degree(cg100,g=c(1:100), cmode='indegree')# you can calculate the degree distributions for all graphs
+deg.sist <- cbind( matrix( colSums(degrees==0),100,1),
+                  t(apply(degrees,2,function(x) tabulate(x, nbins=max.deg) ) ) )# when tabulating we need to add the number of isolates 
+matplot(c(0:(max.deg)), t(deg.sist) ,
+        type ='l',
+        main='degree distribution' )
+lines(c(0:(max.deg)),degree.dist[row.index,c(2:(max.deg+2))],col='grey',lwd=3)
+
+triads <- triad.census( cg100 , mode='graph' )[,4]
+hist(triads ,
+     xlim= range( triads , net.profiles$net.closed.triad[ row.index ] ),
+     main = 'closed triads')
+abline( v=net.profiles$net.closed.triad[ row.index ],col='red' )# the observed density for reference
+
+```
+
+The density is constant but
+
+> The degree distributions have completely different shape to the observed (grey) and few of the simulated networks have many triangles
+
+### Other example
+
+```{r names}
+netnames
+```
+
+
+```{r otherexamplepick, results='hide'}
+# Pick one
+net <- tribesPos.net# to simply rename temporarily
+row.index <- which(net.profiles$netnames=='TribesPos')# the row in the matrix containing Padgett summaries
+```
+
+
+#### Simulate graphs
+```{r otherexample, results='hide'}
+cg100 <- rgnm(n =100,# number of networks to generate
+            nv=net.profiles$net.size[ row.index ],#size of the network
+            m = net.profiles$net.ties[ row.index ],# number of edges
+            mode="graph") # undirected (graph) or directed (digraph)
+```
+
+#### Plot random
+
+Plot the observed network and *one* of the simulated networks
+
+```{r uplotother}
+par(mfrow=c(1,2))
+plot(net)
+plot(as.network(cg100[1,,],directed=FALSE ))
+```
+
+#### Calculate metrics
+
+Calculate density, degree distribution, and triangles for all 100 networks and plot and compare
+
+```{r ctribesstructsrgraph}
+par( mfrow  = c(1,3) )
+hist( gden( cg100) , # the density for each of the 100 random networks
+      xlim=range( gden( cg100 ), 
+                  gden( net ) ) , main='density') 
+abline( v=gden( net ),col='red' )# the observed density for reference
+
+degrees <-degree(cg100,g=c(1:100), cmode='indegree')# you can calculate the degree distributions for all graphs
+deg.sist <- cbind( matrix( colSums(degrees==0),100,1),
+                  t(apply(degrees,2,function(x) tabulate(x, nbins=max.deg) ) ) )# when tabulating we need to add the number of isolates 
+matplot(c(0:(max.deg)), t(deg.sist) ,
+        type ='l',
+        main='degree distribution' )
+lines(c(0:(max.deg)),degree.dist[row.index,c(2:(max.deg+2))],col='grey',lwd=3)
+
+triads <- triad.census( cg100 , mode='graph' )[,4]
+hist(triads ,
+     xlim= range( triads , net.profiles$net.closed.triad[ row.index ] ),
+     main = 'closed triads')
+abline( v=net.profiles$net.closed.triad[ row.index ],col='red' )# the observed density for reference
+
+```
+
+### For all graphs
+
+The conditional uniform $X \thicksim U \mid L(X)= k$ distribution does not seem to do a good job of clustering. Let us check for all of our networks.
+
+```{r simulatemany}
+par(mfrow=c(1,3))
+BigT <- apply(net.profiles[,c(2,3)],1,function(x) {
+  triad.census( rgnm(n =30,# number of networks to generate
+            nv=x[1],#size of the network
+            m = x[2],# number of edges
+            mode="graph") # undirected (graph) or directed (digraph)
+  , mode="graph")[,4]# important 'graph' giving the 4 triads
+  })
+
+
+
+boxplot(BigT[,order(net.profiles$net.size)],#the raw triad counts ordered by network size
+        ylim=range(BigT,net.profiles$net.closed.triad),
+        main='triangles',clab='network',ylab='raw counts')
+lines(net.profiles$net.closed.triad[ order(net.profiles$net.size) ],type='b',col='red')
+
+ave.T <- colMeans(BigT)
+BigT.norm <- apply(BigT,2, function(x) x/mean(x))# normalize
+
+boxplot(BigT.norm[,order(net.profiles$net.size)],# the normalised triad counts ordered by network size
+        ylim=range(BigT.norm,net.profiles$net.closed.triad/ave.T ),
+        main='triangles',clab='network',ylab='centered counts')
+lines(net.profiles$net.closed.triad[order(net.profiles$net.size)]/ave.T[order(net.profiles$net.size)] ,type='b',col='red')
+
+
+
+
+BigC <- apply( net.profiles[,c(2,3)],1,function(x) {
+  centralization( rgnm(n =30,# number of networks to generate
+            nv=x[1],#size of the network
+            m = x[2],# number of edges
+            mode="graph") # undirected (graph) or directed (digraph)
+  , degree, mode="graph")
+  })
+boxplot(BigC[,order(net.profiles$net.size)],# the centrality scores ordered by network size
+        ylim=range(BigC,net.profiles$net.centralisation),ylab='frequency',xlab='network',main='Centralization')
+lines(net.profiles$net.centralisation[order(net.profiles$net.size)],# add observed value for reference
+      type='b',col='red')
+```
+
+> Clearly, density is **not** the only thing that matters in tie-formation because no simulated networks produce enough triangles 
+
+
+## Erdos-Reyini
+
+### Definition
+
+The Bernoulli graph assumes that *independently* for each dyad $\{i,j\} \in \mathcal{N}$, a tie is formed with probability $p_{ij} \in (0,1)$
+$$
+\Pr(X_{ij}=1 ) = p_{ij}
+$$
+It is a *homogenous* Bernoulli graph, or Erdos-Reyni graph, if $p_{ij}=p$ for all $\{i,j\} \in \mathcal{N}$. We say that
+$$
+X \thicksim Bern(p)
+$$
+for a homogenous Bernoulli model with tie-probability $p$.
+
+
+A particular form of Bernoulli graphs are stochastic blockmodels, where the tie-probability for $\[ i,j \}$ depends on class memberships of the nodes $i$ and $j$.
+
+### Padget's business network
+
+Assuming that $X \thicksim U \mid L(X)= k$ did produce enough triangles and gave the wrong shape for the degree distribution. Assuming $X \thicksim Bern(p)$, the average density of graphs will be equal to that of the observed network $x_{\mathrm{obs}}$ if
+$$
+p= \frac{L(x_{\mathrm{obs}})}{M}
+$$
+but the variance in $L(X)$ will not be zero as in $X \thicksim U \mid L(X)= k$.
+
+> Will introducing more variability produce more triangles and more skewed degree distriubions?
+
+
+#### Simulate graphs
+```{r berrandompadgett, results='hide'}
+row.index <- which(net.profiles$netnames=='PadgetB')# the row in the matrix containing Padgett summaries
+ber100 <- rgraph(net.profiles$net.size[ row.index ],#size of the network
+            m=100,# number of networks to generate
+            tprob=net.profiles$net.dens[ row.index ],# tie probability equal to observed density
+            mode="graph") # undirected (graph) or directed (digraph)
+```
+
+#### Plot random
+
+Plot the observed network and *one* of the simulated networks
+
+```{r berplotpadgettgit}
+net <- padgbus.net# to simply rename temporarily
+par(mfrow=c(1,2))
+plot(net)
+plot(as.network(ber100[1,,],directed=FALSE ))
+gden(net)# observed density
+gden(ber100[1,,])# density of a simulated network
+```
+
+> Does the random graph look more like the empirical graph?
+
+#### Calculate metrics on random networks
+
+Any metric that we calculate for the *observed* network we can calculate for a *random* network. Calculate density, degree distribution, and triangles for all 100 networks and plot and compare
+
+```{r berpadgetstructsrgraph}
+par( mfrow  = c(1,3) )
+hist( gden( ber100 ) , # the density for each of the 100 random networks
+      xlim=range( gden( ber100 ), 
+                  gden( net ) ) , main='density') 
+abline( v=gden( net ),col='red' )# the observed density for reference
+
+
+degrees <-degree(ber100,g=c(1:100), cmode='indegree')# you can calculate the degree distributions for all graphs
+deg.sist <- cbind( matrix( colSums(degrees==0),100,1),
+                  t(apply(degrees,2,function(x) tabulate(x, nbins=max.deg) ) ) )# when tabulating we need to add the number of isolates 
+matplot(c(0:(max.deg)), t(deg.sist) ,
+        type ='l',
+        main='degree distribution' )
+lines(c(0:(max.deg)),degree.dist[row.index,c(2:(max.deg+2))],col='grey',lwd=3)
+
+triads <- triad.census( ber100 , mode='graph' )[,4]
+hist(triads ,
+     xlim= range( triads , net.profiles$net.closed.triad[ row.index ] ),
+     main = 'closed triads')
+abline( v=net.profiles$net.closed.triad[ row.index ],col='red' )# the observed density for reference
+
+```
+
+
+> The degree distributions are more forgiving (but all have wrong shape) but still too few triangles
+
+To get an idea just of how unlikely it is that a Bernoulli graph *could have* produced $5$ triangles (as in Padgett's data) or more is
+
+```{r ovalpadg}
+mean( triads >= 5 )
+```
+
+```{r berpadgdist, warning = FALSE}
+
+distances <- apply(ber100,
+                          1, 
+                          function(x) tabulate( geodist( x )$gdist[upper.tri(geodist( x )$gdist)] , nbins=10 ) )  
+                    
+ 
+matplot(c(1:(10)), distances ,
+        type ='l',
+        main='geodesic distribution' ,
+        xlab='distance',
+        ylab='frequency')
+lines(c(1:(10)),
+      tabulate( geodist( net )$gdist[upper.tri(geodist( net )$gdist)] , nbins=10 ),
+      pch=24,bg="blue",lty=1,type='b',
+      col='red',lwd=3 )
+
+
+```
+
+The model $X \thicksim Bern(p)$ does great in capturing the distances - Bernoulli graphs have **short pathlengths**. It achieves this by sacrifing clustering though. If there is a choice between 'linking to someone new' or 'linking back to someone you indirectly know', it choses the new one - because ties form idependenlty, the Bernoulli tie-probability does not know whom a node already has ties to.
+
+> Bernoulli graphs do not waste ties on clustering - this creates reach
+
+Interpreting this in terms of tie-formation processes:
+
+> Independence means that a tie is more likely to a 'new' person than to 'a friend of a friend' because Bernoulli does not know (independence) whom your friends already are
+
+Clearly, we cannot assume that people form ties independently of each other!
+
+### For all graphs
+
+Let us see how $X \thicksim Bern(p)$  does for all networks.
+
+```{r bersimulatemany}
+
+par(mfrow=c(1,3))
+BigT <- apply(net.profiles[,c(2,4)],1,function(x) {
+  triad.census( rgraph(n = x[1],
+                       m =30,# number of networks to generate
+                       tprob= x[2], # density of network
+                       mode="graph") # undirected (graph) or directed (digraph)
+  , mode="graph")[,4]# important 'graph' giving the 4 triads
+  })
+
+
+
+boxplot(BigT[,order(net.profiles$net.size)],#the raw triad counts ordered by network size
+        ylim=range(BigT,net.profiles$net.closed.triad),
+        main='triangles',clab='network',ylab='raw counts')
+lines(net.profiles$net.closed.triad[ order(net.profiles$net.size) ],type='b',col='red')
+
+ave.T <- colMeans(BigT)
+BigT.norm <- apply(BigT,2, function(x) x/mean(x))# normalize
+
+boxplot(BigT.norm[,order(net.profiles$net.size)],# the normalised triad counts ordered by network size
+        ylim=range(BigT.norm,net.profiles$net.closed.triad/ave.T ),
+        main='triangles',clab='network',ylab='centered counts')
+lines(net.profiles$net.closed.triad[order(net.profiles$net.size)]/ave.T[order(net.profiles$net.size)] ,type='b',col='red')
+
+
+
+
+BigC <- apply(net.profiles[,c(2,4)],1,function(x) {
+  centralization( rgraph(n = x[1],
+                       m =30,# number of networks to generate
+                       tprob= x[2], # density of network
+                       mode="graph")  # undirected (graph) or directed (digraph)
+  , degree, mode="graph")
+  })
+boxplot(BigC[,order(net.profiles$net.size)],# the centrality scores ordered by network size
+        ylim=range(BigC,net.profiles$net.centralisation),ylab='frequency',xlab='network',main='Centralization')
+lines(net.profiles$net.centralisation[order(net.profiles$net.size)],# add observed value for reference
+      type='b',col='red')
+```
+
+The extra variability offered by $Bern(p)$ does a little to improve the features of the simulated networks but much of the clustering and centralisation remains unexplained.
+
+
+
+## Conditional degree distribution
+Since it is clear that $Bern(p)$ does not capture the degree distribution of the typical observed network. This is not surprising given that the tie-probabilities for all dyads is the same and thereby for all nodes - all nodes should have on average the same degree.
+
+To see how much of the structure of a network we can explain through the degree distribution we introduce yet another model.
+
+### Definition
+Like the $U \mid L(X)=k$ distribution, we define a distribution for graphs (not for tie-variables). We let $X \thicksim U \mid X_{\cdot+}=d$ mean that the distribution is uniform on all the graphs that have *the exact same degree distribution*. Thus
+$$ 
+\Pr( X = x) = \left\{
+\begin{array}{lr}
+	c^{-1},&\text{if } x_{\cdot+}=d\\
+	0,&\text{else}
+\end{array} 
+\right. {\text{,}}
+$$
+where $x_{\cdot+}=(\sum_j x_{1j},\ldots,x_{nj})^{\top}$ is the vector of degrees, and $c = \sharp \{ x \in \mathcal{X}: x_{\cdot+}=d \}$.
+
+There are several algorithms for simulating networks with fixed degree distribution and all of (the reliable ones) rely on Markov chain Monte Carlo (MCMC).
+
+#### Note on MCMC
+The premise of MCMC is the you want to draw one variable $x$ from a distribution $p(x)$ but you cannot do that directly. What you can do though is to say how much more likely one realisation of a variable is relative to another. For example, let $x$ and $y$ be two networks and that the *target distribution* is $p(x)$. What we need to know in order to use MCMC is the ratio $p(x)/p(y)$ for all $x,y \in \mathcal{X}$. This allows us to generate a sequence of realisations
+$$
+x_0,x_1,x_2,\ldots,x_K
+$$
+of outcomes. This is an iterative scheme where you have an updating rule that takes an outcome $x_t$ and updates it to $x_{t+1}$, and this update relies on our ability to calculate $p(x)/p(y)$ for all $x,y \in \mathcal{X}$. In particular, if we are in state $x_t$, and we consider moving to state $x^{\ast}$, we know how much more or less likely the new state is relative to the old state $p(x^{*})/p(x_t)$. For networks, these updates are often incremental and you either set $x_{t+1}:=x^{\ast}$ or $x_{t+1}:=x_{t}$, depending on $p(x^{*})/p(x_t)$. Consequently, sometimes we stay in the same state, in the same network, for many iterations.
+
+Burnin: to make sure that $x_t$ has 'forgotten' the initial state $x_0$, you usuall allow for a number of interations to pass - this is the burnin period.
+
+Thinning: If you have an adequate burning and want to draw many outcomes, you may not have to do the same burnin again, instead you allow for a certain number of iterations bewtween sucessive sample points - the number of iterations you wait is called thinning.
+
+### Padget's business network
+#### Simulate graphs
+
+```{r unifpadgett, results='hide'}
+g.udegs <- simulate(padgbus.net~edges,
+                    coef=c(0),
+                    constraints=~degreedist,# this is what does it degreedist is based on padgbus.net
+                    nsim=100,
+                    control=control.simulate(MCMC.burnin=100000))# you need to bump up the default burnin, otherwise the networks are too similar to the starting point, the observed network
+```
+
+To confirm that this network actually has the same degree distribution:
+
+```{r unifpadgettdeg}
+par(mfrow=c(1,3))
+deg1 <- degree(padgbus.net, cmode='indegree')
+deg2 <- degree(g.udegs[[5]], cmode='indegree')# this is a list of networks, not an array, hence [[k]]
+plot( deg1,deg2 ,xlab='Padgett', ylab ='random network',main='degrees')#
+plot( deg1[order(deg1)],deg2[order(deg2)] ,ylab ='random network',main='degrees')# the degree distribution is the same but not the same nodes have the same degrees
+plot( table(deg1), type='l',col='grey',lwd=4)
+lines( table(deg2) ,col='red' )
+```
+
+From the first panel we see that not every node has the same degree in the random network as in the observed network. However, the degree distribution is the same, as seen in thee right-hand panel. The middle panel shows that there is a mapping from the nodes in $x_{\mathbf{obs}}$ to the nodes in $x$, so that if for every node with degree $k$ in the former, there is exactly one node in the latter that has degree $k$.
+
+
+### Plot random
+Plot the observed network and then three of the random networks
+```{r unifpadgettplot}
+par( mfrow =c(1,4) )
+plot( padgbus.net )
+plot( g.udegs[[5]] )
+plot( g.udegs[[50]] )
+plot( g.udegs[[100]] )
+```
+
+> The simulated networks look like pretty faithful represeantions of the observed network
+
+Since the degree distribution is identical to the observed network, the density will also be preserved for all simulated networks. Let us look at triangles and geodesic distances.
+
+```{r unifpadgetstructsrgraph, warning = FALSE}
+par( mfrow  = c(1,3) )
+row.index <- which(net.profiles$netnames=='PadgetB')# t
+
+triads <- triad.census( g.udegs , mode="graph")[,4]
+hist(triads ,
+     xlim= range( triads , net.profiles$net.closed.triad[ row.index ] ),
+     main = 'closed triads')
+abline( v=net.profiles$net.closed.triad[ row.index ],col='red' )# the observed density for reference
+
+triads <- triad.census( g.udegs ,mode="graph" )[,3]
+hist(triads ,
+     xlim= range( triads , net.profiles$net.open.triad[ row.index ] ),
+     main = 'open triads')
+abline( v=net.profiles$net.open.triad[ row.index ],col='red' )# the observed density for reference
+
+# because g.udegs is a list it is a little more complicated to use built in sna functions
+distances <- matrix(0,10,100)
+for (k in c(1:100))
+{
+  distances[,k] <- tabulate( geodist( g.udegs[[k]] )$gdist[upper.tri(geodist( g.udegs[[k]] )$gdist)], 
+                             nbins=10 )  
+}
+
+matplot(c(1:(10)), distances ,
+        type ='l',
+        main='geodesic distribution' ,
+        xlab='distance',
+        ylab='frequency')
+lines(c(1:(10)),
+      tabulate( geodist( padgbus.net )$gdist[upper.tri(geodist( padgbus.net )$gdist)] , nbins=10 ),
+      pch=24,bg="blue",lty=1,type='b',
+      col='red',lwd=3 )
+
+
+```
+
+The $X \thicksim U \mid X_{\cdot+}=d$ model does not fully capture clustering and it over-produces open triangles.
+
+> Even if we could model the degree of every node exactly, we cannot produce the same clustering that we see for real networks
+
+> The degree distribution alone is not sufficient for explaining clustering and reach - people do not only care about how many friends they have
+
+## ERGM
+
+### Definition
+
+An introduction to ERGMs is given in the slides. Formally, an ERGM is a model
+$$
+\Pr( X = x \mid \theta) = \frac{ \exp \{ \theta^{\top}z(x)  \}   }{ \sum_{x \in \mathcal{X} } \exp \{ \theta^{\top}z(x) \} }
+$$
+
+where
+* $\theta$ is a vector of statitical parameters
+* $z(x)$ is a vector of statistics calculated on $x$
+* the denominator is a sum over all graphs ensuring that the probaility sums to one
+
+#### Example
+If $z(x)=L(x)$, the only model statistic is the number of edges in the graph. This model is equivalent to $Bern(p)$, where
+$$
+\theta = - \log\left( \frac{1}{p-1}\right)
+$$
+or, expressed in terms of $p$
+$$
+p= \frac{e^{\theta L(x)}}{1+e^{\theta L(x)}}
+$$
+
+### Properties
+
+A property of ERGM is that you can set the values of the expected statistics. The expected statistis
+$$
+E_{\theta} \{ z(X) \} = \sum_{x \in \mathcal{x}} z(x)\Pr( X = x \mid \theta) 
+$$
+are completely determined by the parameters. 
+
+### Padget's business network
+
+#### Bernoulli model
+Simulate networks from an ERGM with only the statistic $z(x)=L(x)$ and paramter $\theta = −1.945$
+
+
+```{r bernERGMpadgett, results='hide'}
+g.ergm.bern <- simulate(padgbus.net~edges,# one statistic
+                    coef= -1.945,# one parameter
+                    nsim=100,
+                    control=control.simulate(MCMC.burnin=100000))# you need to bump up the default burnin, otherwise the networks are too similar to the starting point, the observed network
+```
+
+Inspect networks
+
+```{r ergmberpadgetstructsrgraph}
+par( mfrow  = c(1,2) )
+hist( gden( g.ergm.bern ) , # the density for each of the 100 random networks
+      xlim=range( gden( g.ergm.bern ), 
+                  gden( padgbus.net ) ) , main='density') 
+abline( v=gden( padgbus.net ),col='red' )# the observed density for reference
+
+
+triads <- triad.census( g.ergm.bern , mode='graph' )[,4]
+hist(triads ,
+     xlim= range( triads , triad.census( padgbus.net , mode='graph' )[,4] ),
+     main = 'closed triads')
+abline( v= triad.census( padgbus.net , mode='graph' )[,4],col='red' )# the observed density for reference
+
+```
+
+The denisty of graphs is centred right over the observed value! Because this model is equivalent to $Bern(p)$, the missfit of closed triads is the same as before.
+
+> The Bernoulli ERGM assumes that ties form independently - how can we relax that?
+
+#### Markov model
+Since the Bernoulli ERGM does not reproduce the number of triangles, how do can we improve on that?
+
+If we add statistics for the number of triangles we can increase the number of triangles that the model produces. Let us add statistics:
+
+* edges: $\sum_{ i <j }x_{ij}$
+* two-stars: $\sum_{ i ,j,k }x_{ij}x_{ik}$
+* three-stars: $\sum_{ i ,j,k,h }x_{ij}x_{ik}x_{ih}$
+* triangles: $\sum_{ i ,j,k}x_{ij}x_{ik}x_{jk}$
+
+We will use the parameters $\theta = \left( -2.1113 ,1.0465 ,-0.6318, 1.3064 \right)^{\top}$
+
+```{r markovERGMpadgett}
+g.ergm.markov <- simulate(padgbus.net~edges+kstar(2) +kstar(3) + triangles,# one statistic
+                    coef= c(-4.4878  ,  1.2556 ,  -0.7059  ,  1.0266),# one parameter
+                    nsim=100,
+                    control=control.simulate(MCMC.burnin=100000))# you need to bump up the default burnin, otherwise the networks are too similar to the starting point, the observed network
+
+```
+
+Inspect networks
+
+```{r markovpadgett}
+par( mfrow  = c(2,2) )
+hist( gden( g.ergm.markov ) , # the density for each of the 100 random networks
+      xlim=range( gden( g.ergm.markov ), 
+                  gden( padgbus.net ) ) , main='density') 
+abline( v=gden( padgbus.net ),col='red' )# the observed density for reference
+
+
+triads <- triad.census( g.ergm.markov , mode='graph' )
+obsetriad <- triad.census(padgbus.net, mode='graph' )
+
+hist(triads[,2] ,
+     xlim= range( triads[,2] , obsetriad[2] ),
+     main = 'single edge triads')
+abline( v= obsetriad[2],col='red' )# the observed density for reference
+
+hist(triads[,3] ,
+     xlim= range( triads[,3] , obsetriad[3] ),
+     main = 'open triads')
+abline( v= obsetriad[3],col='red' )# the observed density for reference
+
+hist(triads[,4] ,
+     xlim= range( triads[,4] , obsetriad[4] ),
+     main = 'closed triads')
+abline( v= obsetriad[4],col='red' )# the observed density for reference
+
+```
+
+> The Markov model manages to reproduce all of these local, structural statistics
+
+Let us look at a global property, like geodesic distances
+```{r markovpadgetstructsrgraph, warning = FALSE}
+
+row.index <- which(net.profiles$netnames=='PadgetB')# t
+
+# because g.udegs is a list it is a little more complicated to use built in sna functions
+distances <- matrix(0,10,100)
+for (k in c(1:100))
+{
+  distances[,k] <- tabulate( geodist( g.ergm.markov[[k]] )$gdist[upper.tri(geodist( g.ergm.markov[[k]] )$gdist)], 
+                             nbins=10 )  
+}
+
+matplot(c(1:(10)), distances ,
+        type ='l',
+        main='geodesic distribution' ,
+        xlab='distance',
+        ylab='frequency')
+lines(c(1:(10)),
+      tabulate( geodist( padgbus.net )$gdist[upper.tri(geodist( padgbus.net )$gdist)] , nbins=10 ),
+      pch=24,bg="blue",lty=1,type='b',
+      col='red',lwd=3 )
+
+
+```
+
+The Markov model does a pretty spectacular work of also capturing the reach in the network
+
+> The Markov model with 4 paramters is sufficient to explain density, local clustering, as well as connectivity
+
+We can interpret this as the degree-based effects - the edges and stars - cature mechanisms to do with popularity and activity; and, the triangle parameter captures triadic closure - friends of my friends are also my friends. There are many behvioural interpretations of these mechanisms but at the end of the day they are sufficient for explaining a lot of the network structure.
+
+### Kapferer's tailors
+Let us try an ERGM for Kapferer's tailors. This time, we use the statistics edges and so-called alternating triangles. Alternating triangles, or GWESP, counts the number of shared partners that two directly tied individuals have. Each additional shared partner adds to the statistic but with a geometrically decreasing weight.
+
+```{r gwespERGMkapf, results='hide'}
+g.ergm.gwesp <- simulate(KAPFTS1.net~edges+gwesp(decay = log(2) , fixed= TRUE),# one statistic
+                    coef= c(-3.795, 1.075),# the two parameters
+                    nsim=100,
+                    control=control.simulate(MCMC.burnin=100000))# you need to bump up the default burnin, otherwise the networks are too similar to the starting point, the observed network
+
+```
+
+
+Inspect networks
+
+```{r gwespkapf}
+par( mfrow  = c(2,2) )
+hist( gden( g.ergm.gwesp ) , # the density for each of the 100 random networks
+      xlim=range( gden( g.ergm.gwesp ), 
+                  gden( KAPFTS1.net ) ) , main='density') 
+abline( v=gden( KAPFTS1.net ),col='red' )# the observed density for reference
+
+
+triads <- triad.census( g.ergm.gwesp , mode='graph' )
+obsetriad <- triad.census(KAPFTS1.net, mode='graph' )
+
+hist(triads[,2] ,
+     xlim= range( triads[,2] , obsetriad[2] ),
+     main = 'single edge triads')
+abline( v= obsetriad[2],col='red' )# the observed density for reference
+
+hist(triads[,3] ,
+     xlim= range( triads[,3] , obsetriad[3] ),
+     main = 'open triads')
+abline( v= obsetriad[3],col='red' )# the observed density for reference
+
+hist(triads[,4] ,
+     xlim= range( triads[,4] , obsetriad[4] ),
+     main = 'closed triads')
+abline( v= obsetriad[4],col='red' )# the observed density for reference
+
+```
+
+This two-paramter model seem to capture the local clustering well.
+
+> An overall cost for ties (edges) and a tendency for people that have shared friends to also be friends explains most of the network strucure.
+
+
+## Conclusions
+
+Based on these experiments:
+* Assuming that ties form independely is unrealistic
+* Independent tie-formation may create short pathways
+* Independence means that
+** The rich do not get richer (nodes do not know how many ties they already have)
+** Closure does not happen (ties have 'no memory')
+* The degree distribution only explain some network features
+** Knowing what nodes are popular do not explain whom they form ties ti
+
+### Homework
+
+Explore what other features the random graphs may or may not model
+
+Pick a network, pick some ERGM terms by reference to ``r 'ergm.terms'`` (use the help function ``r '?ergm.terms'``).
+
+Try to estimate a model and then simulate from it. How did I get my parameter values? For Padgett is got the coefficients:
+
+
+```{r ergmcall, eval=FALSE}
+# don't run
+ans <- ergm(padgbus.net~edges+kstar(2) +kstar(3) + triangles)#
+summary(ans)# this produces an ANOVA table with coefficients
+```
+
+And for Kapferer:
+
+```{r kapfergmcall, eval=FALSE}
+# don't run
+ans <- ergm(KAPFTS1.net~edges+gwesp(decay = log(2) , fixed= TRUE))#
+summary(ans)# this produces an ANOVA table with coefficients
+```
+
+> Can you pick any statistic arbitrarily to include in the model?
+
+There are at least three reasons the answer to this is no:
+
+* Higher order effects, like triangles, may be explained by the aggregation of lower-order statistics (such as two-stars)
+* Even if you want to model one specific statistic, it is not certain that you will be able to (see homework)
+* The Markov model and a model with GWESP can be represented in terms of principled dependence assumptions and other statistics do not have that interpretation
+
+# Ego-nets
+
+# Network regression
+
+# References
