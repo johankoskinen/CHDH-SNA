@@ -15,6 +15,8 @@
     <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/tree/main/Markdowns"><strong>Explore the R-code »</strong></a>
     <br />
+     <a href="https://github.com/johankoskinen/CHDH-SNA/tree/main/Slides"><strong>Explore the Teaching material »</strong></a>
+    <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/issues">Report Bug</a>
     ·
     <a href="https://github.com/johankoskinen/CHDH-SNA/issues">Request Feature</a>
