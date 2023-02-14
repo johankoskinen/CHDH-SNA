@@ -11,9 +11,9 @@
   <p align="center">
     This is material for the SNA workshop at Melbourne Connect
     <br />
-    <a href="https://github.com/johankoskinen/CHDH-SNA/data"><strong>Explore the data »</strong></a>
+    <a href="https://github.com/johankoskinen/tree/main/CHDH-SNA/data"><strong>Explore the data »</strong></a>
     <br />
-    <a href="https://github.com/johankoskinen/CHDH-SNA/Markdowns"><strong>Explore the R-code »</strong></a>
+    <a href="https://github.com/johankoskinen/CHDH-SNA/tree/main/Markdowns"><strong>Explore the R-code »</strong></a>
     <br />
     <a href="https://github.com/johankoskinen/CHDH-SNA/issues">Report Bug</a>
     ·
