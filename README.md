@@ -62,7 +62,7 @@ There are plenty of tutorials and introductions to network analysis in R and we 
 
 No particular R-skills are expected. You should be able to download the RMarkdown files and run them locally. The RMarkdown files will read any data straight from [https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/](https://raw.githubusercontent.com/johankoskinen/CDHD-SNA/main/data/).
 
-An example of loading and formatting is provided in
+An example of loading and formatting network data is provided in
 ```sh
 Markdowns/Data-Formatting.Rmd
 ```
