@@ -105,7 +105,7 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 <!-- CONTACT -->
 ## Contact
 
-Johan Koskinen - [@JHK](https://twitter.com/drjohankoskinen) - johan.koskinen@stat.su.se
+Johan Koskinen - [@drjohankoskinen](https://twitter.com/drjohankoskinen) - johan.koskinen@stat.su.se
 
 Project Link: [https://github.com/johankoskinen/CDHD-SNA](https://github.com/johankoskinen/CDHD-SNA)
 
