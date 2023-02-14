@@ -88,6 +88,20 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- ROADMAP -->
+## Roadmap
+
+- [x] Install R
+- [x] Install RStudio
+- [ ] Download `CHDH-SNA-X.Rmd` (replace X by session number)
+- [ ] Explore RMarkdown by
+    - [ ] Stepping through code
+    - [ ] Knit to html or pdf for future reference
+- [ ] Consult slide pack
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
 <!-- CONTACT -->
 ## Contact
 
