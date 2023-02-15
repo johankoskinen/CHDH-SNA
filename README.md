@@ -91,8 +91,8 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 <!-- ROADMAP -->
 ## Roadmap
 
-- [x] Install <img src="images/Rlogo.svg" alt="R" width="25" height="25">
-- [x] Install <img src="images/RStudio-Logo-Flat.png" alt="R" width="88.35" height="31.025">
+- [x] Install <a href="https://cran.r-project.org/"><img src="images/Rlogo.svg" alt="R" width="25" height="25"></a>
+- [x] Install <a href="https://posit.co/download/rstudio-desktop/"><img src="images/RStudio-Logo-Flat.png" alt="R" width="88.35" height="31.025"></a>
 - [ ] Download `CHDH-SNA-X.Rmd` (replace X by session number)
 - [ ] Explore RMarkdown by
     - [ ] Stepping through code
