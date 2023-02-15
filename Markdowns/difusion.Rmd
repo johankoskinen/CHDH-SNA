@@ -1,0 +1,420 @@
+---
+title: "Modelling diffusion and disease transmission on graphs"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+This tutorial has three main parts
+
+* Defining a model for diffusion/contagion from time-stamped data, and
+* Animating contagion on a classic dataset
+* Estimating the contagion parameters for the dataset
+
+# Diffusion and contagion
+We are considering spread on a static network, spread of the kind that once you are 'infected' you stay infected, whether this be by an idea or a disease.
+
+## Small worlds
+Think of stylised network where everyone has the same degree but where there are not redundant ties that create cycles. In such a network, a person can reach an addional $d^k$ unique others at each step, as in the left-hand panel. Should some ties be re-wired to close open triads, the number of nodes the focal actor can reach is reduced significantly as in the righ-hand panel.
+
+![Reach in random network and reach in clustered network.](https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/images/growth.png)
+
+What implications does this have for diffusion on networks where we have clustering as opposed to random Bernoulli networks?
+
+## Web resources
+Some realy good tutorials on <https://kateto.net/network-visualization> and, also, a nice online simulator for ERGM at <https://michaellevy.shinyapps.io/gwdegree/>.
+
+## Basic setup
+We are goign to assume that there is a static network, $X$, and that, in continous time, nodes in the network may become 'infected' by their neighbours. We model the state of all of the nodes by a binary vector $Y$, where at time $t$, $Y(t)$ is 
+* equal to 1, i fthe nodes has adopted the innovation/become infected, and
+* equal to 0 otherwise
+
+## Time to adoption
+What we want to model is the *time until adoption*, the time, given the state of the system, at which point a node $i$ goes from $Y_i(t)=0$ to $Y(t+\delta)=1$. A basic component in this is the *rate of change* - if someone has a higher rate of change, they are likely to change more quickly that if they have a low rate of change.
+
+We are now going to look at different ways in which we can let the rate of a person $i$ changing be dependent on the adoption status of $i$'s neighbours.
+
+# Define functions
+
+Greenan (2015) provides a review of different diffusion models in the survival-analysis framework.
+
+Define the survival model time-till-infected. We assume that the time $t$ until you get infected, given that you are suceptible, is exponential with rate
+$$
+\lambda_i(Y(t_0),X(t_0)) = h_i(t_0)\exp\left\{ \alpha +\beta \sum_i x_{ij}(t_0)y_j(t_0)  \right\}
+$$
+In the sequel we drop the notational dependence on time and write $a_i(y(t),x(t))= a_i(y,x) $.
+
+### Non-network influence
+Myers (2000)  proposed the rate be modelled as
+$$
+a_i(y,x) = \sum_jy_js_j(x)
+$$
+where $s_j(x)$ is the importance of $j$, a function that may be network dependent. This could for example be centrality, as in  Strang and Tuma (1993). Transmission or diffusion does not take place on the edges of the graph here.
+
+### Diffusion on network ties
+A general formulation could be
+$$
+a_i(y,x) = \sum_jy_j x_{ij} s_j(x)
+$$
+where only actors that $i$ has a tie to affect the rate but different actors $j$ may be unequal in their importance as measured by $s_j(x)$
+
+Based on Valente (2005) , Greenan (2015) defines *average exposure* as
+$$
+a_i(y,x) = \frac{\sum_j y_j x_{ij}}{\max\{ \sum_j x_{ij},1 \}}
+$$
+
+so that the higher proportion of contacts that have adopted, the higher the risk of $i$ adopting. Note that the risks/rates with be identical for a person with one alter that has adopted as for a person with $k$ alters, all of whom have adopted.
+
+In order to allow for the number of adopters you have ties to to affect the rate,Greenan (2015)  also define *total exposure*
+$$
+a_i(y,x) = \sum_j y_j x_{ij}
+$$
+
+Myers (2000) and Strang and Tuma (1993) introduce the idea of accounting for the actors *susceptibility* or  *responsiveness*, $p_i(x)$. This can be interacted with any of the exposure and influence effects, for example with total exposure
+$$
+a_i(y,x) = p_i(x)\sum_j y_j x_{ij}
+$$
+
+## Time-to-adoption
+
+The time $T_i$ (from $t_0$) until $i$ gets infected is the exponentially distributed $T_i \thicksim Exp(\lambda_i(Y(t_0),X(t_0)) )$, which implies that the probability that $i$ is the next one to become infected is
+$$
+\frac{\lambda_i(Y(t_0),X(t_0))}{\sum_{j \in V: Y(t_0)=0} \lambda_i(Y(t_0),X(t_0))}
+$$
+
+By the properties of the exponential distribution, we also have that
+$$
+T_{min}=\min \{T_1, \ldots , T_n \} \thicksim Exp \left( \sum_{ j \in V: Y(t_0)=0 } \lambda_i(Y(t_0),X(t_0) ) \right)
+$$
+
+
+These models are *piece-wise constant* or *proportional hazard* models - the rate of change, or eagerness to adopt, only is altered when the system changes.
+
+# Laod packages
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+library(sna)
+library(network)
+library(ergm)
+library(ndtv)
+```
+
+# Load Coleman, Katz, and Menzel data
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+CoKaMe  <-  read.table("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/colemankatzmentzel.txt")
+
+ColeAdv <- as.matrix(CoKaMe[1:246,])# ADVICE non-symmetric, binary.
+ColeDisc <- as.matrix(CoKaMe[247:492,])# DISCUSSION non-symmetric, binary.
+ColeFr<- as.matrix(CoKaMe[493:738,])# FRIEND non-symmetric, binary.
+
+ColeAdv.net <- as.network(ColeAdv)
+ColeDisc.net <- as.network(ColeDisc)
+
+CoKaMeAttributes  <-  read.table("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/ColemanKatzMentzAttributes.txt")
+
+head(CoKaMeAttributes)
+
+```
+
+
+# Function for calulating parameters
+The diffusion times
+```{r, results='hide'}
+event.time <- CoKaMeAttributes[,2]
+unique.times <- sort(unique(event.time))
+```
+
+```{r, results='hide'}
+exposure.cal <- function(Y,X){
+  n <- dim(X)[1]
+  exposure <- matrix(0,n,1)
+  for (i in c(1:n))
+  {
+    deg <- sum(X[i,])
+    if (deg>0)
+    {
+      # total exposure only
+      exposure[i] <- sum(Y[X[i,]==1])
+      }
+    
+  }
+  exposure
+}
+```
+
+```{r, results='hide'}
+
+onset <- c()
+terminus <-c()
+sick <- c()
+vertex.id <- c()
+
+X <- ColeAdv
+n <- dim(X)[1]
+Y <- matrix(0,n,1)
+
+  # Plotting parameters
+onset <- c()
+sick <- c()
+vertex.id <- c()
+terminus <- c()
+Nsims <- length(unique.times)
+big.exposure <- matrix(0,n,Nsims )
+infection.status <- matrix(0,n,Nsims )
+
+
+for (k in c(1:Nsims) ){
+adoptors <- which(event.time==unique.times[k])# which people adopt
+if (k>1)
+{
+ big.exposure[,k] <- exposure.cal(Y,X)
+}
+
+Y[adoptors]  <- 1
+infection.status[,k] <- Y
+
+# Plotting parameters
+
+for (t in c(1:length(adoptors)))
+{
+  changeling <- adoptors[t]
+onset <- c(onset,0)
+sick <- c(sick,3)
+vertex.id <- c(vertex.id ,changeling)
+if (unique.times[k] < 18){
+terminus <- c(terminus, k )
+onset <- c(onset,  k)
+sick <- c(sick,2)
+terminus <- c(terminus, 18)
+vertex.id <- c(vertex.id ,changeling)
+}
+if (unique.times[k] >= 18){
+  terminus <- c(terminus, 18 )
+}
+}
+#
+}
+
+```
+
+# Create film matrix
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+vs <- data.frame(onset=onset, terminus=terminus, vertex.id=vertex.id, sick = sick )
+edgelist <- which(X==1,arr.ind=TRUE)
+event.frame <- data.frame(onset = 0, 
+                          terminus = 18 ,
+                          tail= edgelist[,2] , 
+                          head= edgelist[,1],
+                          duration= 18 ,
+                          edge.id = c(1:dim(edgelist)[1]) )
+net3 <- as.network(X, directed=FALSE)
+net3.dyn <- networkDynamic(base.net=net3,
+                           edge.spells=event.frame,
+                           vertex.spells=vs,
+                           create.TEAs=TRUE,
+                           vertex.TEA.names='sick')
+```
+
+# Make film
+
+```{r,warning=FALSE, message=FALSE}
+end.time <- 18
+compute.animation(net3.dyn, animation.mode = "kamadakawai",
+                  slice.par=list(start=0, end=end.time, interval=end.time/50, 
+                                 aggregate.dur=end.time/50, rule='any'))
+
+render.d3movie(net3.dyn, usearrows = F, 
+               displaylabels = F, 
+               bg="#ffffff", vertex.border="#333333",
+               vertex.cex = degree(net3 )/max(degree(net3 )) + .3,
+               vertex.col = 'sick',
+               edge.col = '#55555599',
+               launchBrowser=T, #filename="Media-Network-Dynamic.html",
+               render.par=list(tween.frames = 1, show.time = F),
+               plot.par=list(mar=c(0,0,0,0)), output.mode='htmlWidget' )
+
+```
+
+# Create a dataset for estimation
+
+```{r}
+this.exposure <- function(Y,X,actor)
+{
+  exposure <- NA
+  if (Y[actor]==0){
+    exposure <- 0
+  deg <- sum(X[actor,])
+    if (deg>0)
+    {
+      # total exposure only
+      exposure <- sum(Y[X[actor,]==1])
+    }
+  }
+  exposure
+}
+```
+
+```{r}
+numChange <- sum(event.time <18)
+adopt.id<- matrix(0,numChange,1)
+adopt.time <- matrix(0,numChange,1)
+exposure <- matrix(0,n,numChange)
+  
+event <-1
+Y <- matrix(0,n,1)
+for (k in c(1:17) ){
+adoptors <- which(event.time==unique.times[k])# which people adopt
+# create a tie-breaker
+meantime <- unique.times[k]
+num.adapts <- length(adoptors)
+tie.break.time <- seq(meantime-0.25,meantime+0.25,length.out=num.adapts)
+for (i in c(1:num.adapts))
+{
+  # for each adoptor set time
+  # calculate exposure
+  adopt.time[event] <- tie.break.time[i]
+  for (j in c(1:n)){
+  exposure[j,event] <-  this.exposure(Y,X,actor=j)
+  }
+   adopt.id[event]<- adoptors[i]
+  event <- event +1
+ 
+  Y[adoptors[i]] <- 1
+}
+
+}
+```
+
+## Likelihood function
+
+```{r}
+like.cal <- function(id,time.0,time.1,exposure,alpha,beta)
+{
+  s <- time.1-time.0
+  n <- length(exposure)
+  # time for winner
+  log.rate <- (alpha+beta*exposure[id])
+  log.like <- log.rate - exp(log.rate)*s
+  # for everyone else
+  for (i in c(1:n) )
+  {
+    if (i != id)
+    {
+      if (!is.na( exposure[i] ))
+      {
+        rate <- exp( alpha+beta*exposure[i] )
+       log.like <-  log.like  - s* rate 
+      }
+    }
+    
+  }
+  log.like
+}
+```
+
+
+```{r}
+eval.like <- function(adopt.id,adopt.time,exposure,alpha,beta)
+{
+  
+  loglikelihood <- 0
+  for (k in c(1:length(adopt.id)))
+  {
+    if (k==1)
+    {
+      time.0 <- 0
+    }
+     if (k>1)
+    {
+      time.0 <- adopt.time[k-1]
+     }
+    
+    increment <-  like.cal(id=adopt.id[k],
+                                             time.0=time.0,
+                                             time.1=adopt.time[k],
+                                             exposure =exposure[,k] ,
+                                             alpha=alpha,beta=beta)
+    if (is.na(increment ))
+    {
+      browser()
+    }
+    loglikelihood <- loglikelihood +increment
+    
+  }
+loglikelihood   
+}
+
+```
+
+### MCMC
+
+A simplistic MCMC for estimating $\alpha$ and $\beta$
+
+```{r}
+alpha <- -3
+beta <- 0
+
+sigma.alpha <- 0.1
+sigma.beta <- 0.1
+
+numiterations <- 1000
+
+alphas<- matrix(0,numiterations,1)
+betas <- matrix(0,numiterations,1)
+alphas[1,1] <- alpha
+betas[1,1] <- beta
+big.like <- matrix(0,numiterations,1)
+like.temp <- eval.like(adopt.id=adopt.id,adopt.time=adopt.time,exposure=exposure,alpha=alpha,beta=beta)
+big.like[1,1] <-like.temp
+
+burning <- 100
+for (iteration in c(2:numiterations))
+{
+  alphastar <- rnorm(1,alphas[iteration-1,1],sigma.alpha)
+  betastar <- rnorm(1,betas[iteration-1,1],sigma.beta)
+  likestar <- eval.like(adopt.id=adopt.id,adopt.time=adopt.time,exposure=exposure,alpha=alphastar,beta=betastar)
+  if (log(runif(1))< (likestar-like.temp ) )
+  {
+    alpha <- alphastar
+      beta <-  betastar
+      like.temp <-likestar 
+    
+    
+  }
+  
+  alphas[iteration,1] <- alpha
+betas[iteration,1] <- beta
+big.like[iteration,1] <-like.temp
+}
+
+
+
+```
+
+# Estimation results
+
+Plot the traces of the chains and the histograms
+
+```{r}
+par(mfrow=c(2,2))
+plot(ts(alphas))
+plot(ts(betas))
+
+hist(alphas[burning:numiterations],main='posterior',xlab=expression(alpha))
+abline(v=mean(alphas[burning:numiterations]))
+hist(betas[burning:numiterations],main='posterior',xlab=expression(beta))
+abline(v=mean(betas[burning:numiterations]))
+```
+
+> The contagion parameter $\beta$ is positive with high posterior probability
