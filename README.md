@@ -73,6 +73,7 @@ No fancy R-wrappers will be used and the code is written entirely in base R and 
 should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
 [https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/) contains all the resources you will ever need.
 
+<a href="https://www.stats.ox.ac.uk/~snijders/siena/"><img src="images/rsienalogo.png" alt="R" width="100" height="100"></a>
 
 You *will*, however, need to come with a laptop with R and R-studio installed. In addition, you will want to install the packages
 * sna
