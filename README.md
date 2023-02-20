@@ -86,6 +86,8 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
 * RSiena
   ```sh
   install.packages(RSiena)
+  
+ If you need to update your version of R, a handy guide is provided [here](https://www.linkedin.com/pulse/3-methods-update-r-rstudio-windows-mac-woratana-ngarmtrakulchol) 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
