@@ -219,7 +219,7 @@ $$
 $$ The conditional probability of $i=1$ **creating** the tie to $j=2$ is
 thus
 
-```{r, results='hide'}
+```{r}
 exp(-0.7349)/(exp(-0.7349)+exp(0.7349)+exp(-0.7349)+1)
 ```
 
@@ -771,7 +771,7 @@ friendship <- sienaDependent(friendshipData)
 Using `sienaDataCreate`, we give `RSiena` the oppotunity to figure out how data are structured and what types of effects can be calculated from it
 
 
-```{r sienadatas50, results='hide'}
+```{r sienadatas50datacreate, results='hide'}
 s50data <- sienaDataCreate( friendship, smoke1)
 ```
 
@@ -791,7 +791,7 @@ $$
 for each tie-variable, and where $v_i$ is one or zero according to whether $i$ is a smoker or not, respectively. This is the sender effect
 
 
-```{r sendersmoke, results='hide'}
+```{r sendersmokeSelection, results='hide'}
 s50.effects <- includeEffects( s50.effects,# we "add and effect" to our effects object
                                egoX,# the shortname here evokes that variable for 'ego' affects decision
                                interaction1 = "smoke1" # the variable we want to interact the DV with
@@ -810,7 +810,7 @@ so that if the corresponding parameter is positive, then actors are more likely 
 
 
 
-```{r receiversmoke, results='hide'}
+```{r receiversmokeInf, results='hide'}
 s50.effects <- includeEffects( s50.effects,
                                altX,# the shortname here evokes that variable for 'alter' affects decision of ego
                                interaction1 = "smoke1" # the variable we want to interact the DV with
@@ -848,7 +848,7 @@ s50algorithm.simple <- sienaAlgorithmCreate( projname = 's50_simple' )# We are o
 
 Estimating the model with default settings is simply a callt to siena07
 
-```{r s50estimsimp, results='hide', message=FALSE}
+```{r s50estimAlgo, results='hide', message=FALSE}
 s50.simple.ans <- siena07( s50algorithm.simple,# estimation settings
                   data = s50data,# data object that knows DV and IV
                   effects = s50.effects,# the effects we specified
@@ -859,7 +859,7 @@ s50.simple.ans <- siena07( s50algorithm.simple,# estimation settings
 ## Results
 
 Print the results to screen
-```{r anss50estimsimp, results='hide', message=FALSE}
+```{r anss50estimsimp2,  message=FALSE}
 summary( s50.simple.ans )
 ```
 
@@ -871,7 +871,7 @@ summary( s50.simple.ans )
 To account for (test) possible assortativity on smoking, we add the homophily effect:
 
 
-```{r homophsmoke, results='hide'}
+```{r homophsmokeSelec, results='hide'}
 s50.effects <- includeEffects( s50.effects,# we "add and effect" to our effects object
                                egoXaltX,# the shortname
                                interaction1 = "smoke1" # the variable we want to interact the DV with
@@ -891,7 +891,7 @@ s50.hom.ans <- siena07( s50algorithm.simple,# estimation settings
 ## Results
 
 Print the results to screen
-```{r anss50estimsimp, results='hide', message=FALSE}
+```{r anss50estimsimp, message=FALSE}
 summary( s50.hom.ans )
 ```
 
@@ -922,7 +922,7 @@ drinking <- sienaDependent( drink, type = "behavior" )
 
 We now have a dataset with two dependent variables so we need to create a new siena data object using `sienaDataCreate`:
 
-```{r sienadatas50, results='hide'}
+```{r sienadatas50infl, results='hide'}
 s50data.infl <- sienaDataCreate( friendship, smoke1, drinking )
 ```
 
@@ -967,7 +967,7 @@ s50.effects.infl <- includeEffects( s50.effects.infl,# still augmenting effects 
 We use the same social selection effects for smoking, the sender effect
 
 
-```{r sendersmoke, results='hide'}
+```{r sendersmokeinfluence, results='hide'}
 s50.effects.infl <- includeEffects( s50.effects.infl,# we "add and effect" to our effects object
                                egoX,# the shortname here evokes that variable for 'ego' affects decision
                                interaction1 = "smoke1" # the variable we want to interact the DV with
@@ -977,7 +977,7 @@ s50.effects.infl <- includeEffects( s50.effects.infl,# we "add and effect" to ou
 and the receiver effect
 
 
-```{r receiversmoke, results='hide'}
+```{r receiversmokeSelec, results='hide'}
 s50.effects.infl <- includeEffects( s50.effects.infl,
                                altX,# the shortname here evokes that variable for 'alter' affects decision of ego
                                interaction1 = "smoke1" # the variable we want to interact the DV with
@@ -987,7 +987,7 @@ s50.effects.infl <- includeEffects( s50.effects.infl,
 and the homophily effect
 
 
-```{r homophsmoke, results='hide'}
+```{r homophsmokeInfl, results='hide'}
 s50.effects.infl  <- includeEffects( s50.effects.infl ,# we "add and effect" to our effects object
                                egoXaltX,# the shortname
                                interaction1 = "smoke1" # the variable we want to interact the DV with
