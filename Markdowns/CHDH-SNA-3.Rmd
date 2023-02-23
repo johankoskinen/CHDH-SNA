@@ -1,0 +1,397 @@
+---
+title: "CHDH SNA 3"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+---
+
+```{css, echo=FALSE}
+.question {
+  background-color: lightpink;
+  border: 3px solid red;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+-   All the effects!
+-   Trouble shooting
+-   Goodness of fit
+
+Load packages
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+library('RSiena')
+```
+
+# All effects
+
+## Data
+
+Effects are data-dependent, so load data
+
+```{r}
+friend.data.w1 <- s501
+friend.data.w2 <- s502
+friend.data.w3 <- s503
+drink <- s50a
+smoke <- s50s
+```
+
+Define dependent and independent variables
+
+```{r}
+# format the dependent variables:
+friendshipData <- array( c( friend.data.w1, 
+                            friend.data.w2, 
+                            friend.data.w3 ),
+                         dim = c( 50, 50, 3 ) )
+friendship <- sienaDependent(friendshipData)
+drinking <- sienaDependent( drink, type = "behavior" )
+smoking <- sienaDependent( smoke, type = "behavior" )
+s50.big.data <- sienaDataCreate( friendship, smoking, drinking )
+# chose effects
+s50.big.effs <- getEffects( s50.big.data )
+```
+
+## Effects
+
+The effects avaiable to us are in the object `s50.big.effs`. Have a look!
+
+The most important columns are:
+
+name | effectName | shortName | interaction1 | interaction2 | include | fix| test |          
+:--------|:----------:| :----------:| :----------:| :----------:| :------:| :-----:| :----------:| 
+Dependent variable that owns effect | description | what you use to define model | covariate 1 | covariate 2 | in model, T/F | T/F | T /F |
+
+# Manual
+
+The [manual]("https://www.stats.ox.ac.uk/~snijders/siena/RSiena_Manual.pdf") has a comprehensive list of possible effects
+
+## Structural effects
+
+Let us examine only the structural part of the previous model
+
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs, transTrip, transRecTrip )
+```
+
+Set up estimation settings:
+
+```{r, results='hide',message=FALSE}
+s50.algo.struc.1<- sienaAlgorithmCreate( projname = 's50_struc.1' )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.1 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.1 )
+```
+
+What happens if we substitute `transTies` for `transRecTrip`
+
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transRecTrip,include=FALSE )
+s50.big.effs <- includeEffects( s50.big.effs, transTies )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.2 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.2 )
+```
+
+Include all three
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transRecTrip,include=TRUE )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.3 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.3 )
+```
+
+### GWESP
+
+An alternative to having both `transTies` and `transTrip` is to use `GWESP`
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transTies,transTrip,include=FALSE )
+s50.big.effs <- includeEffects( s50.big.effs,gwespFF)
+```
+```{r , results='hide',message=FALSE}
+s50.est.struc.4 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.4 )
+```
+
+> What differences do we see between the different parametrizations?
+
+## Selection effects
+
+Looking at `s50.big.effs`, all effects with `name=friendship` and `interaction1=smoking` are social selection effects with respect to smoking.
+
+```{r}
+s50.effects.infl <- s50.big.effs
+s50.effects.infl <- includeEffects( s50.effects.infl,# again, 'adding' to the effects
+                                    egoX,# sender effect for alcohol
+                                    egoSqX,# non-linear sender effect
+                                    altX,# receiver effect for alcohol
+                                    altSqX,# non-linear receiver effect
+                                    diffSqX,# squared difference of alcohol ego and alcohol alter
+                                    interaction1 = "drinking" # DV works the same as an IV on another DV
+                                    )
+```
+
+Looking at `s50.big.effs`, all effects with `name=friendship` and `interaction1=smoking` are social selection effects with respect to drinking.
+
+```{r}
+s50.effects.infl <- includeEffects( s50.effects.infl,# we "add and effect" to our effects object
+                               egoX,# the shortname here evokes that variable for 'ego' affects decision
+                               interaction1 = "smoking" # the variable we want to interact the DV with
+                               )
+```
+
+> Change or add a covariate effect on friendship of smoking
+
+Estimate!
+```{r , results='hide',message=FALSE}
+s50.est.infl.1 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+	
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.infl.1 )
+```
+
+
+## Influence effects
+
+As before we specify
+
+```{r}
+s50.effects.infl.2 <- s50.big.effs
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    avAlt,# this is the shortname for "average alter"
+                                    name="drinking",# name: what is the dependent variable
+                                    interaction1 = "friendship" # the network is now "independent" variable
+                                    )
+```
+
+But we can also add influence for `smoking` but let us try `totAlt` instead
+
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    totAlt,# this is the shortname for "average alter"
+                                    name="smoking",# name: what is the dependent variable
+                                    interaction1 = "friendship" # the network is now "independent" variable
+                                    )
+```
+
+The dependent variable can also be predictors of each other. Smoking as DV
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    effFrom,# the effect of 'interaction1' on smoking
+                                      name="smoking",# name: what is the dependent variable
+                                    interaction1 = "drinking"# drinking is now "independent" variable
+                                    )
+```
+
+Drinking as DV
+
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    effFrom,# the effect of 'interaction1' on smoking
+                                      name="drinking",# name: what is the dependent variable
+                                    interaction1 = "smoking"# drinking is now "independent" variable
+                                    )
+```
+
+### Interaction multiple variables
+
+The effect of the total similarity of an egos alters drinking on the smoking of ego (smoking tot. sim. (friendship) x alter's drinking) requires two interactions
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    totSimAltX,# the effect of 'interaction1' on smoking
+                                    name="smoking",# name: what is the dependent variable
+                                    interaction1 = "drinking",# drinking is now "independent" variable
+                                    interaction2 = "friendship" 
+                                    )
+```
+
+
+Estimate!
+```{r , results='hide',message=FALSE}
+s50.est.infl.2 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.2,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+	
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.infl.2 )
+```
+
+
+# Goodness-of-fit (GOF)
+How do we know if the model is any good?
+
+> You may simulate from the model to see if it replicates data
+
+We already did this in `CHDH-SNA-2.Rmd`.
+
+## Built in GOF routines
+
+### Score-type test
+
+What if we want to test if we should include `totSimAltX` for `drinking`?
+
+The we add the effect but set `test=TRUE` and `fix=TRUE`
+
+```{r}
+s50.effects.infl.3 <- s50.effects.infl.2
+s50.effects.infl.3 <- includeEffects( s50.effects.infl.3,# still augmenting effects structure
+                                    totSimAltX,# the effect of 'interaction1' on smoking
+                                    name="drinking",# name: what is the dependent variable
+                                    interaction1 = "smoking",# drinking is now "independent" variable
+                                    interaction2 = "friendship" ,
+                                    test=TRUE, fix=TRUE
+                                    )
+```
+
+The parameter is now fixed to 0
+
+Estimate the model with`totSimAltX` for drinking set to 0
+
+Estimate!
+```{r , results='hide',message=FALSE}
+(s50.est.infl.3 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.3,
+                         batch = TRUE,
+                         returnDeps = TRUE ))
+```
+
+We can now test
+$$
+H_0: \beta_{totSimAltX}=0
+$$
+against
+
+$$
+H_1: \beta_{totSimAltX}\neq0
+$$
+
+using a Score-type test:
+
+```{r}
+score.Test(s50.est.infl.3)
+```
+
+> This test only uses the simulated statistics for the effect and there is no need to actually estimate the parameter
+
+# Fit of network measures
+
+To test if the model replicates data well, we have to define what we want to look at.
+
+The in- and out-degree distributions are already provided in the GOF routine
+
+```{r}
+(gofi0 <- sienaGOF(s50.est.infl.2, IndegreeDistribution, verbose=TRUE, join=TRUE,
+     varName="friendship"))
+(gofo0 <- sienaGOF(s50.est.infl.2, OutdegreeDistribution, verbose=TRUE, join=TRUE,
+     levls=c(0:10,15,20),varName="friendship"))
+(gof0.tc <- sienaGOF(s50.est.infl.2, TriadCensus, verbose=TRUE, join=TRUE,
+     varName="friendship"))
+```
+
+## Inspecting GOF distributions
+
+Plotting routines are defined for the GOF distributions. For example in-degree distribution
+
+```{r}
+plot( gofi0 )
+```
+
+
+# Trouble shooting
+
+## Convergence issues
+
+What if my model does not converge?
+
+If converge t-statistics are close to $0.1$ in absolute value, restart using `prevAns`
+
+Assume that we did not have enough iterations in Phase 3 **and** only 2 subphases in Phase 2
+```{r, results='hide',message=FALSE}
+s50.algo.struc.short<- sienaAlgorithmCreate( projname = 's50_struc.1', n3 =50, nsub=2)
+```
+
+
+
+Estimate!
+```{r , results='hide',message=FALSE}
+(s50.est.infl.3 <- siena07( s50.algo.struc.short,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.2,
+                         batch = TRUE,
+                         returnDeps = TRUE ))
+```
