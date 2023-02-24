@@ -1,0 +1,431 @@
+---
+title: "CHDH SNA 4"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+---
+
+```{css, echo=FALSE}
+.question {
+  background-color: lightpink;
+  border: 3px solid red;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+-   Different types of data
+-   Imperfect data
+
+Load packages
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+library('RSiena')
+```
+
+# Two-mode data
+
+Consider boards $i=1,\ldots,m$ and directors $j=1,\ldots,m$, and let
+$$
+\begin{equation*}  
+X_{ij}= \left\{
+\begin{array}{lr}
+    1,&\text{if board } i \text{ has as a board member director } j\\
+    0,&\text{else}
+\end{array} 
+\right. 
+\end{equation*}
+$$
+
+## Data
+
+A subset of the data on Swedish interlocking directors used in Koskinen and Edling (2012)
+
+```{r}
+SWE.b.t1 <- as.matrix(read.table("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/SWE-Borard-t1.txt"))
+
+SWE.b.t2 <- as.matrix(read.table("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/SWE-Borard-t2.txt"))
+
+```
+
+Find out number of nodes in nodesets:
+
+```{r}
+nrsend <- dim( SWE.b.t1 )[1]
+nrrec <- dim( SWE.b.t1 )[2]
+```
+
+To create bipartite network objects you need two node sets and must create the node sets too
+
+```{r}
+senders <- sienaNodeSet(nrsend, nodeSetName="senders")
+receivers <- sienaNodeSet(nrrec, nodeSetName="receivers")
+```
+
+Define the dependent variable:
+
+```{r}
+myBipNet <- sienaDependent(array(c( SWE.b.t1,SWE.b.t2), dim=c(nrsend,nrrec,2)),# not square!
+                      "bipartite",# this is the type (as opposed to one-mode)
+                      nodeSet=c("senders","receivers")# associate rows and columns with nodesets
+                      )
+```
+
+At this point we do not have any other variables:
+
+```{r}
+bipData <- sienaDataCreate(myBipNet,nodeSets=list(senders,receivers))
+```
+
+# What effects?
+
+Get effects table for model specification:
+
+```{r}
+bipEffects <- getEffects(bipData)
+```
+
+# Descriptives
+
+Generate initial descriptive output file:
+
+```{r}
+print01Report(bipData,modelname="bip1")
+```
+
+> We should really always look at the print-report
+
+# Four-cycles
+
+```{r}
+bipEffects <- includeEffects(bipEffects,cycle4,name="myBipNet")
+```
+
+
+#bipEffects <- includeEffects(bipEffects,outActSqrt,name="setting")
+# Bypass bug related to initial values for bipartite network rates:
+#bipEffects <- setEffect(bipEffects,Rate,name="leisure",initialValue=1.0,period=1,type="rate")
+
+# Algorthm
+
+```{r, results='hide',message=FALSE}
+bip.algo <- sienaAlgorithmCreate( projname = 'bip.mod' )
+```
+
+Estimate!
+
+```{r , results='hide',message=FALSE}
+bip.mod.ans <- siena07( bip.algo,
+                         data = bipData ,
+                         effects =bipEffects ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+# Results
+
+Check estimation results
+
+```{r}
+bip.mod.ans
+```
+
+```{r}
+(gofi0 <- sienaGOF(bip.mod.ans, IndegreeDistribution, verbose=TRUE, join=TRUE,
+     varName="myBipNet"))
+(gofo0 <- sienaGOF(bip.mod.ans, OutdegreeDistribution, verbose=TRUE, join=TRUE,
+     varName="myBipNet"))
+```
+
+Note now that the indegree
+$$
+\sum_i x_{ij}
+$$
+will be, for each director $j$, the number of boards that choose director $j$
+
+```{r}
+plot(gofi0)
+```
+
+
+The outdegree
+$$
+\sum_j x_{ij}
+$$
+will be, for each board $i$, the number of directors the board has
+
+```{r}
+plot(gofo0)
+```
+
+> This simple model actually does relatively OK in terms of not creating boards that have too many or too few directors!
+
+There is no simple way (to the best of my knowledge) of restricting the degree distribution. You may set the maximum using `MaxDegree=c(myBipNet=15)` in `sienaAlgorithmCreate`. There are some relevant effects as well.
+
+# One-mode & two-mode
+
+Consider now the Glasgow dataset and assume that we will model friendship $X$ alongside
+$$
+\begin{equation*}  
+z_{ij}^{(r)}= \left\{
+\begin{array}{lr}
+    1,&\text{if pupil } i \text{ engages in category } j \text{ of activity } r\\
+    0,&\text{else}
+\end{array} 
+\right. 
+\end{equation*}
+$$
+for a number $r=1,\ldots,R$ different activities. The activities will be
+
+- Leisure activities
+- Music genres
+- Different drugs
+
+
+```{r}
+temp <- tempfile()
+download.file("http://www.stats.ox.ac.uk/~snijders/siena/Glasgow_bip_data.zip",temp)
+
+# read the friendship data:
+friendship1 <- as.matrix(read.table(unz(temp,"Glasgow-1-net.dat")))
+friendship2 <- as.matrix(read.table(unz(temp,"Glasgow-2-net.dat")))
+
+# now demographic info:
+demographics <- as.matrix(read.table(unz(temp,"Glasgow-sex-birthyear.dat")))
+
+# now the bipartite data:
+leisure1 <- as.matrix(read.table(unz(temp,"GL-1-lsr.dat")))
+leisure2 <- as.matrix(read.table(unz(temp,"GL-2-lsr.dat")))
+music1 <- as.matrix(read.table(unz(temp,"GL-1-mus.dat")))
+music2 <- as.matrix(read.table(unz(temp,"GL-2-mus.dat")))
+drugs1 <- as.matrix(read.table(unz(temp,"GL-1-drg.dat")))
+drugs2 <- as.matrix(read.table(unz(temp,"GL-2-drg.dat")))
+
+unlink(temp)
+
+```
+
+# Recoding
+
+Recode the behaviours into meaningful affiliation info:
+
+```{r}
+leisure1[leisure1 %in% c(2,3,4)] <- 0
+# leisure1[leisure1 == 2] <- 1
+leisure2[leisure2 %in% c(2,3,4)] <- 0
+# leisure2[leisure2 == 2] <- 1
+drugs1[drugs1 %in% c(1)] <- 0
+drugs1[drugs1 %in% c(2,3,4)] <- 1
+drugs2[drugs2 %in% c(1)] <- 0
+drugs2[drugs2 %in% c(2,3,4)] <- 1
+```
+
+Recode valued friendship data & identify missings:
+
+```{r}
+friendship1[friendship1 == 2] <- 1
+friendship1[friendship1 == 9] <- NA
+friendship2[friendship2 == 2] <- 1
+friendship2[friendship2 == 9] <- NA
+```
+
+We need to find out the number of nodes in different nodesets as well as the number of items in different scales:
+```{r}
+(nrpupils <- dim(leisure1)[1])
+(nrleisureItems <- dim(leisure1)[2])
+(nrmusicItems <- dim(music1)[2])
+(nrdrugsItems <- dim(drugs1)[2])
+```
+
+# Node sets
+
+We now have 4 different node sets. Define the different node sets for R:
+
+```{r}
+pupils <- sienaNodeSet(nrpupils, nodeSetName="pupils")
+leisureItems <- sienaNodeSet(nrleisureItems, nodeSetName="leisureItems")
+musicItems <- sienaNodeSet(nrmusicItems, nodeSetName="musicItems")
+drugsItems <- sienaNodeSet(nrdrugsItems, nodeSetName="drugsItems")
+```
+
+# Dependent variables
+
+We will format each affiliation network as a dependent variable
+
+```{r}
+leisure <- sienaDependent(array(c(leisure1, leisure2),
+				dim=c(nrpupils, nrleisureItems,2)),
+				"bipartite", nodeSet=c("pupils", "leisureItems"))
+music <- sienaDependent(array(c(music1, music2),
+				dim=c(nrpupils, nrmusicItems,2)),
+				"bipartite", nodeSet=c("pupils", "musicItems"))
+drugs <- sienaDependent(array(c(drugs1, drugs2),
+				dim=c(nrpupils, nrdrugsItems,2)),
+				"bipartite", nodeSet=c("pupils", "drugsItems"))
+```
+
+in addition to the dependent one-mode friendship network
+
+```{r}
+friendship <- sienaDependent(array(c(friendship1, friendship2),
+				dim=c(nrpupils, nrpupils,2)), nodeSet="pupils")
+```
+
+# Covariate
+
+Different node sets may have different covariates. Here we only use the sex of the pupils:
+
+```{r}
+sex.F <- coCovar(demographics[, 1], nodeSet="pupils")
+```
+
+# Data create
+
+We have now defined all of the different variables and can combine them in an RSiena dataset
+
+```{r}
+bipData <- sienaDataCreate(friendship,# one-mode network
+                           leisure, # pupil affiliation with leisure activity
+                           music, # pupil affiliation with different music styles
+                           drugs, # pupil affiliation with different drugs
+                           sex.F, # sex (male/female; 0/1)
+                           nodeSets=list(pupils, leisureItems, musicItems, drugsItems)# the different node sets
+                           )
+
+```
+
+# Effects
+
+Get effects table for model specification:
+```{r}
+bipEffects <- getEffects(bipData)
+```
+
+# Descriptives
+
+Generate initial descriptive outputfile:
+```{r}
+print01Report(bipData, modelname="Bipartite-illustration")
+```
+
+Look at the generated output file "Bipartite-illustration.out" to see how RSiena interpreted the directives provided and to get an impression of the data (eyeball the degrees, look at occurrence of missings, look at Jaccard indices).
+
+# Specify the model
+
+When we specify the effects to include, pay special attention to the `name` variable
+
+```{r}
+bipEffects <- includeEffects(bipEffects, transTrip, name="friendship")
+bipEffects <- includeEffects(bipEffects, from, name="friendship",
+							interaction1="leisure")
+bipEffects <- includeEffects(bipEffects, from, name="friendship",
+							interaction1="music")
+bipEffects <- includeEffects(bipEffects, from, name="friendship",
+							interaction1="drugs")
+bipEffects <- includeEffects(bipEffects, cycle4, name="leisure")
+bipEffects <- includeEffects(bipEffects, cycle4, name="music")
+bipEffects <- includeEffects(bipEffects, cycle4, name="drugs")
+bipEffects <- includeEffects(bipEffects, to, name="leisure",
+							 interaction1="friendship")
+bipEffects <- includeEffects(bipEffects, to, name="music",
+							 interaction1="friendship")
+bipEffects <- includeEffects(bipEffects, to, name="drugs",
+							 interaction1="friendship")
+bipEffects
+```
+
+# Algorithm
+
+Create algorithm object:
+```{r}
+bipModel <- sienaAlgorithmCreate(projname='bipartite-Glasgow-results')
+```
+
+**Estimate**!
+
+```{r}
+bipResults <- siena07(bipModel,
+                      data=bipData,
+                      effects=bipEffects,
+                      batch = TRUE,
+                      returnDeps = TRUE)
+bipResults
+```
+
+# Results
+
+Perhaps convergence is not satisfactory yet, so the model might bevestimated in a further step:
+```{r}
+bipResults <- siena07(bipModel, data=bipData, effects=bipEffects,
+							prevAns=bipResults, returnDeps=TRUE)
+bipResults
+```
+
+# Multigroup analysis
+
+A brief example of the data structure for running Bayesian hierarchical SAOMs. This requires the beta package
+
+```{r}
+library(RSienaTest)
+```
+
+# Data
+
+We use a subset of a large dataset (Knecht, A., 2008. Friendship Selection and Friends' Influence Dynamics of Networks and Actor Attributes in Early Adolescence.')
+
+
+```{r loaddata}
+load(url("http://www.stats.ox.ac.uk/~snijders/siena/G21.RData"))
+```
+
+The main data are
+```{r}
+TwentyOne_Groups
+class(TwentyOne_Groups)
+length(TwentyOne_Groups)
+```
+
+This is a sienaGroup object, created by
+
+```{r}
+?sienaGroupCreate
+```
+
+The groups are the elements of `TwentyOne_Groups`. The first group is
+
+```{r}
+TwentyOne_Groups[[1]]
+```
+
+There is a group-level covariate `nn` that is `log(group size - 1)`
+
+```{r}
+group_n <- sapply(TwentyOne_Groups, function(x){length(x$nodeSets[[1]])})
+group_n
+```
+
+# Print report
+
+To further understand data, get the initial description
+
+```{r}
+print01Report(TwentyOne_Groups, modelname = 'Andrea_21Groups')
+```
+
+# Further material
+
+Examples of how to specify a model for this multigroup object is provided at
+<https://www.stats.ox.ac.uk/~snijders/siena/RscriptsienaBayes.r>
