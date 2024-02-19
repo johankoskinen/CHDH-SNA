@@ -30,12 +30,13 @@
 The workshop is built around a set of slides and a set of RMarkdown files, with accompanying data sets, that you will find here
 
 The schedule for the SNA workshop
-1. Introduction to networks in R
-2. Introduction to stochastic actor-oriented models (SAOMs)
-3. Analysing data with SAOM
-4. Advanced topics for SAOM
+1. Introduction to Social Network Analysis
+2. Introduction to Auto-logistic Actor Attribute Models
+3. Introduction to stochastic actor-oriented models (SAOMs)
+4. Modelling Social Influence and Selection with SAOM
+5. Advanced topics in SAOMs
 
-For details on venue and timings see [Eventbrite](https://www.eventbrite.com/e/network-analysis-workshop-tickets-528916191567)
+For details on venue and timings see [Eventbrite]([https://www.eventbrite.com/e/network-analysis-workshop-tickets-528916191567](https://www.eventbrite.com.au/e/social-network-analysis-workshop-tickets-795764040667))
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
