@@ -1,0 +1,202 @@
+---
+title: "SNA-HALAAM"
+author: "Johan Koskinen"
+date: "2024-03-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hierarchical ALAAM
+
+This tutorial provides a brief illustration of Bayesian estimation for **Hierarchical** auto-logistic actor attribute models (HALAAMs)(drawing on @robins2001network, @daraganovaThesis, @daraganova2013autologistic, @koskinen2020bayesian). The approach has been explored in two Master's theses thus far. Vartanya (at the University of Manchester) applied an early version of `MultivarALAAMalt.R` to a pan-European dataset to understand differences in smoking contagion. Arvidsson (at the University of Stockholm) applied the HALAAM to the Stockholm Birth Cohort dataset, to investiagate the determinants of becomming a leader (in later life).
+
+This tutorial is meant to primarily illustrate the data structure and estimation syntax. To this end, and to save time, a multilevel dataset is simulated, and then a model is estimated for the simulated data. The code is entirely undocumented outside of this tutorial and some other scraps of information that is available here and there.
+
+For details on the Bayesian hierarchial structure of the model, see Koskinen and Snijders' (2023) work on hierarchial SAOMs.
+
+## Dependencies
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+require('mvtnorm')
+require('expm')
+```
+
+## Load routines
+
+The functions required for estimating the HALAAM are in the document `MultivarALAAMalt.R`. You can download this from GitHub and then manipulate the code as you see fit. Alternatively, you can read in the functions using:
+
+```{r}
+source("https://raw.githubusercontent.com/johankoskinen/ALAAM/main/MultivarALAAMalt.R")
+```
+
+## Model
+
+For group $g$, $g=1,\ldots,G$, we will assume that
+$$
+\boldsymbol{\theta}^{(g)} \thicksim N_p(\boldsymbol{\mu}, \boldsymbol{\Sigma})
+$$
+and conditionally on this, independently for each group $g$,
+$$
+\boldsymbol{y}^{(g)} \mid \mathbf{X}^{(g)},\boldsymbol{\theta}^{(g)} \thicksim ALAAM(\boldsymbol{\theta}^{(g)})
+$$
+Assume that the true model has $\boldsymbol{\mu}$  and  $\boldsymbol{\Sigma}$
+```{r}
+p <- 4
+mu <- matrix( 0 ,p,1)
+mu[1] <- -2.15
+mu[2] <- 1
+mu[4] <- .25
+Sigma <- matrix(0,p,p)
+diag(Sigma) <- c(.25 , .1 , .25, .1)
+```
+
+## Simulate data
+
+To have a dataset to work with, we are going to generate data from our model. We will simulate $\boldsymbol{y}^{(g)}$ from a true model with known parameters. Then we can estimate a model do the simulated data. To simulater from the model we need to generate covariates $\mathbf{W}^{(g)/}$ for each group and, likewise, a network, $\mathbf{X}^{(g)}$.
+
+```{r}
+G <- 30 # number of groups
+ADJ <- vector('list',G)# we store adjacency matrices in a list
+y <- vector('list',G)# we store outcomes in a list
+covariates <- vector('list',G)
+stats <- matrix(0,4,G)
+for (g in c(1:G))
+{
+  ADJ[[g]] <- rgraph(20,1,tprob= 0.05)# generate network from Bernoulli graph model
+  covariates[[g]] <- matrix(as.numeric(runif(20)>0.5),20,1)# generate a binary covariate
+  theta <- matrix(rmvnorm(1, mu , sigma = Sigma)[1,],1,p) # apparently this needs to be row vector
+  y.start <-  matrix(as.numeric(runif(20)>0.5),20,1)
+
+  ALAAMobj <- prepALAAMdata(y.start,ADJ[[g]],covariates[[g]],directed=TRUE,useDegree = TRUE)
+
+Big.stats <- simulate.alaam(ALAAMobj=ALAAMobj,
+                            theta=theta,
+                            contagion ='simple', 
+                            thinning = 30, 
+                            NumIterations = 10000, 
+                            burnin = 5000, 
+                            DoSave=TRUE, 
+                            returnNet= TRUE, 
+                            doGOF=FALSE)
+#> dim(Big.stats$y)
+#[1]    20 10000
+  # check that the proportions of y_i=1 are reasonable
+# plot(ts( Big.stats$statsvec[1,]) )
+# table(Big.stats$y[,10000])
+# check that there is some but not too much contagion
+# plot(ts( Big.stats$statsvec[2,]) )
+  y[[g]] <- Big.stats$y[,10000]
+  stats[,g] <- Big.stats$statsvec[,10000]
+}
+
+```
+
+Check statistics of simulated networks
+
+```{r}
+stats
+```
+
+## Estimate
+
+If data look OK, try to estimate
+
+```{r}
+Tot.It <- 20000
+RESULTS <- multiALAAM(y,
+                      ADJ,
+                      covariates,
+                      useDegree=TRUE,
+                      directed=TRUE,
+                      silent=FALSE,
+                      Iterations=Tot.It,
+                      saveFreq = 100)
+#                      MHtuning=NULL,priorMu=NULL, priorSigma=NULL, priorDf=NULL, priorKappa=NULL,burnin=2000)
+```
+## Check output
+
+```{r}
+names( RESULTS )
+```
+
+### MCMC Performance
+
+```{r}
+par(mfrow=c(2,2))
+for (k in c(1:4))
+{
+  txt <- paste0("expression(mu[",k,"])") #built expression as string
+ylab<-eval(parse(text=txt)) 
+  plot( ts( RESULTS$MuPost[k, ] ) , ylab = ylab , xlab = 'Iteration')
+  
+}
+```
+
+It is not looking great perhaps, but let us plot the posteriors with HPD intervals
+
+```{r}
+plot.HPD <- function(posterior,perc=.05,col.patch='blue',xlim=c(-5,5),xlab='', include.ref=TRUE)
+{
+  require(HDInterval)
+  if (max(posterior)>min(posterior)){
+  f.dens <- density(posterior)
+  plot(f.dens$x,f.dens$y,col='black',type='l',bty='n',yaxt='n',xaxt='n',xlab=xlab,ylab='',xlim=xlim)
+  
+  HPD <- hdi(posterior,1-perc)
+  hpd.curve <- f.dens$y[f.dens$x> HPD[1] & f.dens$x< HPD[2]]
+    hpd.axis <-f.dens$x[f.dens$x> HPD[1] & f.dens$x< HPD[2]]
+    polygon(c(hpd.axis[1], hpd.axis ,hpd.axis[length(hpd.axis)],rev(hpd.axis)), 
+            c( 0,hpd.curve,0, rep(0,length(hpd.curve)) ), col = col.patch, border = NA)
+    
+
+  }
+  if (max(posterior)==min(posterior)){
+plot(0,0,col='black',type='n',bty='n',yaxt='n',xaxt='n',xlab='',ylab='',xlim=xlim)
+  }
+  if (include.ref){
+    abline(v=0,col='darkred',lty=2)
+  abline(v=-5,col='grey',lty=2)
+  abline(v=5,col='grey',lty=2)
+  }
+}
+
+
+```
+
+```{r}
+par(mfrow=c(2,2))
+for (k in c(1:4))
+{
+  stop <- length(RESULTS$MuPost[k, ])
+  start <- ceiling(stop/10)
+   txt <- paste0("expression(mu[",k,"])") #built expression as string
+xlab<-eval(parse(text=txt))
+ plot.HPD ( RESULTS$MuPost[k, start:stop],col.patch='darkgoldenrod',xlim=range(RESULTS$MuPost[k, ]),xlab=xlab)
+  
+}
+```
+
+> The uncertainty in the posteriors will be heavily dependent on the prior variance-covariance matrix for $\boldsymbol{\mu}$ and you may have to play around with that (compare with the illustrative experiments in the appendix of Koskinen and Snijders, 2023)
+
+
+## Checking the posterior predictive distributions
+
+We can check how well the MCMC has mixed for individual groups, e.g.
+
+```{r}
+matplot(c(1:( dim(RESULTS$Thetas)[3] )), t(RESULTS$Thetas[1,,]) ,
+        type ='l',
+        main=bquote(atop("Posterior predictive ", theta[g], "\n") ) ,
+        xlab = 'iterations',
+        ylab=expression(theta[g]))
+```
+
+```{r}
+mat <- t(RESULTS$Thetas[2,,])
+boxplot(mat[,order(colMeans(mat))])
+```
