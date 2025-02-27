@@ -1,0 +1,1466 @@
+---
+title: "CHDH SNA 4"
+author: "[Johan Koskinen](https://psychologicalsciences.unimelb.edu.au/research/msps-research-groups/Social_Networks_Laboratory)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+---
+
+```{css, echo=FALSE}
+.question {
+  background-color: lightpink;
+  border: 3px solid red;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+This session is about the basics of stochastic actor-oriented models
+(SAOMs). We refer to the RSiena page
+<https://www.stats.ox.ac.uk/~snijders/siena/> for further resources.
+Here we will
+
+-   Introduce SAOM as a simulation model
+-   Present the basic functions and functionalities
+-   Briefly discuss an empirical example
+
+It is appropriate that we **simulate** the model as Siena stands for
+
+> **S**imulation **I**nvestigation for **E**mpirical **N**etwork **A**nalysis
+
+# Packages
+
+We will use functionality from the network packages `sna` and `network`
+(see
+<https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/Markdowns/CHDH-SNA-2.Rmd>).
+The main packages for SAOM is `RSiena`.
+
+<h3 align="center">
+
+<a href="https://www.stats.ox.ac.uk/~snijders/siena/"><img src="https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/images/rsienalogo.png" alt="R" width="100" height="100"/></a>
+
+</h3>
+
+First time you use them, install the packages (*uncomment the install
+commmands*)
+
+```{r install, results='hide', warning=FALSE, message=FALSE}
+# install.packages("sna")
+# install.packages("network")
+# install.packages("RSiena")
+```
+
+Once packages are installed, load them
+
+```{r loadsna, results='hide', warning=FALSE, message=FALSE}
+library("sna")
+library("network")
+library('RSiena')
+```
+
+# Data set
+
+The RSiena package automatically loads the van de Bunt's Freshman
+dataset (see [Data description](https://www.stats.ox.ac.uk/~snijders/siena/vdBunt_data.htm)). We will use time-point 3 and 4
+
+```{r, results='hide'}
+?tmp3# opens the helpfile with information about the dataset
+class(tmp3)# both time-points are regular adjacency matrices
+class(tmp4)
+dim(tmp3)# 32 students by 32
+n <- dim(tmp4)[1]
+```
+
+## Data checking
+
+The original tie-variables had 6 levels but have here been dichotomised.
+It is good practice to check that ties are binary
+
+```{r datacheck, results='hide'}
+table(tmp3,useNA = 'always')
+table(tmp4,useNA = 'always')
+```
+
+## Missing
+
+RSiena handles missing data in estimation, but for the purposes of
+simulating and investigating the network, replace missing values
+
+```{r replacemiss, results='hide'}
+tmp3[is.na(tmp3)] <- 0 # remove missing
+tmp4[is.na(tmp4)] <- 0 # remove missing
+```
+
+## Plot change
+
+Plotting the networks with nodes in the same places illustrates what the
+SAOM will try to model
+
+```{r}
+par(mfrow = c(1,2))
+coordin <- plot(as.network(tmp3), main='Time 3')
+plot(as.network(tmp4),coord=coordin, main='Time 4')
+```
+
+> Looking closely we see that some arcs have been added and others been removed
+
+In this session, we will assume that we have one initial network $X(t_0)=x_{obs}(t_0)$, at time $t_0$ and that we want to say something about a network $X(t_1)$, at time $t_1$, $t_0<t_1$.
+
+> We will only use two **waves** but because of the Markov property of the model, all ingredients extend without limitations to several waves.
+
+# Format data
+
+To simulate (but also estimate) we need to execute, in turn, each of the
+functions
+
+1.  `sienaDependent` - formats class `matrix` to class `sienaDependent`
+2.  `sienaDataCreate` - formats data to class `siena`
+3.  `getEffects` - provides us with the *effects* we can use for the
+    process
+4.  `sienaAlgorithmCreate` - sets up simulation/estimation settings
+
+After these steps, the model is simulated/estimated using `siena07`
+
+## sienaDependent
+
+The function `sienaDependent` formats and translates the two **adjacency
+matrices** to a "sienaDependent" object:
+
+```{r sienadep, results='hide'}
+mynet1 <- sienaDependent(array(c(tmp3, tmp4), # the matrices in order
+                               dim=c(32, 32,2))# are set as two slices in an array
+                         )
+```
+
+For networks, `sienaDependent` takes networks clued together in an
+$n \times n \times$ number of waves, array.
+
+> You can define, as dependent variables, one-mode networks, two-mode
+> networks, or dependent mondadic variables
+
+## sienaDataCreate
+
+Once you have defined your variables, these are combined into a `siena`
+object using `sienaDataCreate`
+
+```{r sienadata, results='hide'}
+mydata <- sienaDataCreate(mynet1)
+```
+
+The siena object adds all relevant information about the data
+
+```{r}
+mydata
+```
+
+# Simulate
+
+## getEffects
+
+To determined what effects are available for our combination of
+different types of data
+
+```{r, results='hide'}
+myeff <- getEffects(mydata)
+```
+
+Assume a model where an actor $i$, when they make a change, only cares
+about how many ties they have.
+
+```{r}
+myeff <- includeEffects(myeff, recip,include=FALSE)# remove reciprocity which is DEFAULT
+myeff$initialValue[myeff$shortName=='Rate'] <- 5.7288
+myeff$initialValue[myeff$shortName=='density'][1] <- -0.7349
+```
+
+> For later reference, notice how `myeff` is on the right-hand side of the allocation of `includeEffects`
+
+### Waiting times
+
+What does the rate $\lambda =  5.7288$ mean?
+
+Each time the network has changed (or an oppotunity to change), each actor waits $T_i \overset{i.i.d.}{\thicksim} Exp(\lambda)$ time.
+
+> The actor that *gets to change* is the one who waits for the shortest amount of time
+
+```{r}
+waiting <- rexp(32, 5.7288)
+hist(waiting)
+winner <- which( waiting == min(waiting))
+paste('The winner is actor: ', winner)
+```
+
+
+### Micro-step
+
+In the example of $i=1$, deciding between creating a tie to $j=2,4$ or
+breaking the tie to $j=3$
+
+![Micro-step](https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/images/microstep.png){width="50%"}
+
+With our current model
+
+$$
+\Pr(X(1\leadsto 2)=\Pr(X(1\leadsto 4)=\frac{e^{\beta_1(1-2x_{12})}}{1+\sum_{j\neq i} e^{\beta(1-2x_{ij})}}=\frac{\exp(-0.7349)}{\exp(-0.7349)+\exp(0.7349)+\exp(-0.7349)+1}
+$$ and
+
+$$
+\Pr(X(1\leadsto 3)=\frac{e^{\beta_1(1-2x_{13})}}{1+\sum_{j\neq i} e^{\beta(1-2x_{ij})}}=\frac{\exp(0.7349)}{\exp(-0.7349)+\exp(0.7349)+\exp(-0.7349)+1}
+$$ The conditional probability of $i=1$ **creating** the tie to $j=2$ is
+thus
+
+```{r}
+exp(-0.7349)/(exp(-0.7349)+exp(0.7349)+exp(-0.7349)+1)
+```
+
+and the conditional probability of $i=1$ **deleting** the tie to $j=3$
+is thus
+
+```{r, results='hide'}
+exp(0.7349)/(exp(-0.7349)+exp(0.7349)+exp(-0.7349)+1)
+```
+
+## sienaAlgorithmCreate
+
+The function `sienaAlgorithmCreate` determines the simulation/estimation
+settings. Here we are going to
+
+-   Simulate `simOnly = TRUE`
+-   a total of `n3 = 100`
+
+Networks, starting in $X(t_3)$
+
+```{r setAlgoritm, results='hide'}
+sim_model  <-  sienaAlgorithmCreate( 
+                          projname = 'sim_model',# name will be appended to output 
+                          cond = FALSE, # NOT conditioning on num. changes
+                          useStdInits = FALSE,# we are changing some defaults
+                          nsub = 0 ,# more about subphases in estimation
+                          n3 = 100,# number of simulations (in Phase 3)
+                          simOnly = TRUE)# we only want to simulate
+
+```
+
+We are ready to simulate!
+
+## siena07
+
+The function `siena07` is the main engine of RSiena and is used to estimate *all models* (apart from hierarchical SAOMS)
+
+```{r firstsiena07, results='hide'}
+sim_ans <- siena07( sim_model,# the name of our model
+                    data = mydata,# all of our data - see above for what is in there
+                    effects = myeff,# the effects we have chosen, including parameters
+                    returnDeps = TRUE,# save simulated networks
+                    batch=TRUE )# batch=FALSE opens a GUI
+```
+
+## Read in a function
+
+The networks are in `sim_ans$sims` but to help with extracting and formatting them we read in the function `reshapeRSienaDeps`
+```{r sourceReshape}
+source("https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/data/reshapeRSienaDeps.R")
+```
+
+We apply it on `sim_ans` 
+
+```{r getSimnets}
+mySimNets <- reshapeRSienaDeps(sim_ans,n)# n is the number of nodes (defined above)
+```
+
+The object `mySimNets` is an 100 by 32 by 32 `array` with 9 adjacency matrices
+
+## Plot simulated networks
+
+Plot networks with the same layout as for $X(t_3)$ above
+
+```{r, results='hide', message=FALSE}
+par(mfrow=c(2,5),# want 2 by 5 panels
+    oma = c(0,1,0,0) + 0.1,# custom outer margins
+    mar = c(1,0,0,0) + 0.1)# custom inner margins
+plot(as.network(tmp4),# observed network at t4
+     coord=coordin) # observed network
+invisible(# need to supress printing to consol
+  apply(mySimNets[1:9,,],# for the first 9 networks in array
+      1,# along first dimenstion, apply the following function
+      function(x)
+        plot(as.network(x),coord=coordin) ) )
+```
+
+It is hard to spot any differences. Plot density of the networks
+
+```{r}
+hist( gden(mySimNets ) )
+abline( v = gden(tmp4), col='red')
+```
+
+> If actors only care about how many ties they have, we predict the density at $t_4$ correctly
+
+How about the number of **reciprocated ties** $x_{ij}x_{ji}=1$
+
+```{r recipsimIndep}
+hist( dyad.census(mySimNets)[,1] ,xlim=c(9,50))
+abline(v = dyad.census(tmp4)[1], col='red')
+```
+
+> Clearly, if the only rule actors have is to care about the number of ties they have, this is not enough to explain why there are so many (46) reciprocal dyads
+
+# Reciprocity model
+
+Simulate assuming that actors want to have reciprocated ties to others with the model with probabilities $\Pr(X(i \leadsto j) |i \text{ makes decision})$:
+$$
+p_{ij}(X,\beta)=\frac{e^{\beta_d (1-2x_{ij}) +\beta_r (1-2x_{ij})x_{ji} } }{ \sum_h e^{\beta_d (1-2x_{ih}) +\beta_r (1-2x_{ih})x_{hj} } }
+$$
+
+with parameters $\beta_d=-1.1046$ and $\beta_r=-1.2608$:
+
+
+```{r}
+myeff <- includeEffects(myeff, recip,include=TRUE)# reinstate reciprocity which is DEFAULT
+myeff$initialValue[myeff$shortName =='recip'][1] <- 1.2608
+#### === We also need to change the other values
+myeff$initialValue[myeff$shortName=='Rate'] <- 6.3477
+myeff$initialValue[myeff$shortName=='density'][1] <- -1.1046
+```
+
+Log odds for a new graph
+
+|        |     | $x_{ji}$   |                  |
+|-------:|:----|------------|:----------------:|
+|$x_{ij}$|     |   0        |   1              |
+|        | 0   |   0        | $\beta_d$        |
+|        |  1  | $\beta_d$  | $\beta_d+\beta_r$|
+
+## Simulate
+
+Set up the algorithm
+
+```{r, results='hide',message=FALSE}
+sim_model  <-  sienaAlgorithmCreate( 
+  projname = 'sim_model',
+  cond = FALSE, 
+  useStdInits = FALSE,
+  nsub = 0 ,
+  n3 = 100,
+  simOnly = TRUE)
+```
+
+Run simulation
+```{r, results='hide',message=FALSE}
+sim_ans <- siena07( sim_model, data = mydata,
+                    effects = myeff,
+                    returnDeps = TRUE, batch=TRUE )
+```
+
+Reshape and extract networks:
+
+```{r, results='hide',message=FALSE}
+mySimNets <- reshapeRSienaDeps(sim_ans,n)
+```
+
+# Investigate simulated networks
+
+Plot, using the same code as before
+
+```{r, results='hide', message=FALSE}
+par(mfrow=c(2,5),# want 2 by 5 panels
+    oma = c(0,1,0,0) + 0.1,# custom outer margins
+    mar = c(1,0,0,0) + 0.1)# custom inner margins
+plot(as.network(tmp4),# observed network at t4
+     coord=coordin) # observed network
+invisible(# need to supress printing to consol
+  apply(mySimNets[1:9,,],# for the first 9 networks in array
+      1,# along first dimenstion, apply the following function
+      function(x)
+        plot(as.network(x),coord=coordin) ) )
+```
+
+Compare the *observed* number of reciprocated dyads to the *simulated* number of reciprocated dyads
+
+```{r recipsimRecio}
+hist( dyad.census(mySimNets)[,1])
+abline(v = dyad.census(tmp4)[1], col='red')
+```
+
+> With an actor preference of 1.26 for having their ties reicprocated we reproduce the reciprocity
+
+What about the triad cencus? Check the first 9
+
+```{r, results='hide'}
+triad.census(tmp4)# observed
+triad.census(mySimNets[1:9,,])# first 9 simulated networks
+```
+
+Look at the distributions for **transitive** triads and **dense** triads
+
+```{r triadsimRecio}
+par(mfrow=c(1,2))
+hist( triad.census(mySimNets)[,9], xlim=c(8,40))# column 9 is 030T
+abline(v = triad.census(tmp4)[9], col='red')
+hist( triad.census(mySimNets)[,16], xlim=c(4,24))# column 16 is 300
+abline(v = triad.census(tmp4)[16], col='red')
+```
+
+
+> A prefence for reciprocity is not enough to explain why reciprocated dyads hang together in triangles or why there are so many transitive triads
+
+
+# Triangle model
+
+Add another **positive** parameter $\beta_t$ for the preference for closing open triads.
+
+```{r triadeffs, results='hide'}
+myeff <- includeEffects(myeff, recip,include=TRUE) # add the effect reciprocated ties
+myeff <- includeEffects(myeff, transTrip,include=TRUE)
+myeff$initialValue[myeff$shortName=='Rate'] <- 7.0959
+myeff$initialValue[myeff$shortName=='density'][1] <- -1.6468
+myeff$initialValue[myeff$shortName=='recip'][1] <- 0.8932
+myeff$initialValue[myeff$shortName=='transTrip'][1] <- 0.2772
+```
+
+
+## Simulate
+
+Set up the algorithm
+
+```{r, results='hide',message=FALSE}
+sim_model  <-  sienaAlgorithmCreate( 
+  projname = 'sim_model',
+  cond = FALSE, 
+  useStdInits = FALSE,
+  nsub = 0 ,
+  n3 = 100,
+  simOnly = TRUE)
+```
+
+Run simulation
+```{r, results='hide',message=FALSE}
+sim_ans <- siena07( sim_model, data = mydata,
+                    effects = myeff,
+                    returnDeps = TRUE, batch=TRUE )
+```
+
+Reshape and extract networks:
+
+```{r, results='hide',message=FALSE}
+mySimNets <- reshapeRSienaDeps(sim_ans,n)
+```
+
+What about the triad cencus? Check the first 9
+
+```{r, results='hide'}
+triad.census(tmp4)# observed
+triad.census(mySimNets[1:9,,])# first 9 simulated networks
+```
+
+Look at the distributions for **transitive** triads and **dense** triads
+
+```{r triadsimRecio2}
+par(mfrow=c(1,2))
+hist( triad.census(mySimNets)[,9], xlim=c(2,55))# column 9 is 030T
+abline(v = triad.census(tmp4)[9], col='red')
+hist( triad.census(mySimNets)[,16], xlim=c(4,86))# column 16 is 300
+abline(v = triad.census(tmp4)[16], col='red')
+```
+
+> Having preferences for reciprocated ties and transitive ties seem to explain 'most' of the structure
+
+# Estimate SAOMs
+
+How did I pick the numbers
+
+- $\beta_d=-1.6468$
+- $\beta_r= 0.8932$
+- $\beta_t=0.2772$
+
+Manually, you could 
+
+1. pick values $\beta_d^{\ast}$, $\beta_r^{\ast}$, and $\beta_t^{\ast}$
+2. simulate lots of networks, and
+3. adjust the parameters, so that
+  * increase (decrease) $\beta_d^{\ast}$ if density is too low (high)
+  * increase (decrease) $\beta_r^{\ast}$ if reciprocity is too low (high)
+  * increase (decrease) $\beta_t^{\ast}$ if transitivity is too low (high)
+4. repeat
+
+Luckily, we have an algorithm (stochastic approximation) for automating this
+
+## Defining model
+
+We define the model in the same way as when we simulated data
+
+```{r ModDefEstimateTrans, results='hide', message=FALSE}
+myeff <- getEffects(mydata)# We already have our effects, but let's start from scratch
+myeff <- includeEffects(myeff, recip,include=TRUE) # add the effect reciprocated ties (it is alredy include by DEFAULT though)
+myeff <- includeEffects(myeff, transTrip,include=TRUE)# we want to estimate the trasitivity effect
+```
+
+
+Set up the algorithm with **default values** (`siena07` will assume you want to estimate)
+
+```{r, results='hide',message=FALSE}
+est_model  <-  sienaAlgorithmCreate( 
+  projname = 'est_model',
+  n3 = 1000,# number of simulations in Phase 3 (default *is* 1000)
+  simOnly = FALSE,# default *is* FALSE
+  cond = FALSE, 
+  useStdInits = FALSE)
+```
+
+**Estimate!**
+
+```{r estimTriangle, results='hide', message=FALSE}
+est_ans <-siena07(est_model,# algorithm object
+                  data = mydata, # the data object we created earlier
+                  effects = myeff,# same effects as in simulation
+                  returnDeps = TRUE,
+                  batch=TRUE)
+```
+
+Estimation gives us an ANOVA table with
+- Parameter (point) estimates
+- Standard errors of estimates
+- Convergence statistis
+
+```{r}
+summary( est_ans )
+```
+
+> These estimates look very much like the numbers that I picked arbitrarily - what makes these better
+
+The **observed statistics** that we want to 'hit' on average are
+```{r}
+est_ans$targets
+# the same as sim_ans$targets
+```
+
+
+The simulated statistics for the parameters **from the estimation** are
+```{r}
+colMeans(est_ans$sf2)
+# also provided in:
+# est_ans$estMeans
+```
+
+The simulated statistics for the parameters **from the simulation** are
+```{r}
+sim_ans$estMeans
+```
+
+We can calculate *within how many standard deviation units* of the **targets** we are for each statistic
+$$
+\frac{\bar{z}_k-z_{obs}}{sd(z_k)}
+$$
+The deviations using the estimates from estimation:
+
+```{r}
+(colMeans(est_ans$sf2)-est_ans$targets)/sqrt(diag(var(est_ans$sf2[,1,])))
+# Also provided in:
+# est_ans$tstat
+```
+
+
+For estimates from simulation:
+```{r, results='hide'}
+(colMeans(sim_ans$sf2)-sim_ans$targets)/sqrt(diag(var(sim_ans$sf2[,1,])))
+```
+
+> For both sets of parameters, the simulated statistics are *on average* within less that 0.1 standard deviations units of the observed statistics
+
+As a quick illustration, we can see when we set rate, density, and reciprocity to the estimated values
+
+```{r, results='hide'}
+myeff$initialValue[myeff$shortName=='Rate'] <- est_ans$theta[1]
+myeff$initialValue[myeff$shortName=='density'][1] <- est_ans$theta[2]
+myeff$initialValue[myeff$shortName=='recip'][1] <-est_ans$theta[3]
+```
+
+*but* pick another value for transitivity:
+
+```{r}
+myeff$initialValue[myeff$shortName=='transTrip'][1] <- 0.1
+```
+
+and then, simulate!
+
+```{r, results='hide',message=FALSE}
+sim_model  <-  sienaAlgorithmCreate( 
+  projname = 'sim_model',
+  cond = FALSE, 
+  useStdInits = FALSE,
+  nsub = 0 ,
+  n3 = 1000,
+  simOnly = TRUE)
+```
+
+```{r, results='hide',message=FALSE}
+sim_ans <- siena07( sim_model, data = mydata,
+                    effects = myeff,
+                    returnDeps = TRUE, batch=TRUE )
+```
+
+Calculate the scaled difference between the average statistics and the observed statistics again
+
+```{r, results='hide'}
+(colMeans(sim_ans$sf2)-sim_ans$targets)/sqrt(diag(var(sim_ans$sf2[,1,])))
+```
+
+The everage simulated statistics:
+```{r, results='hide'}
+sim_ans$estMeans
+```
+
+are not close to the observed
+
+```{r, results='hide'}
+sim_ans$targets
+```
+
+> Decreasing the transitivity parameter results in networks having too few transitive triads
+
+# Convergence check
+In general, we say that the estimation has converged and estimates can be estimated if
+
+1. Convergence t-ratios $| t_{conv} | < 0.1$, and
+2. Overall convergence ration less than $0.25$
+
+## Summary of estimation
+
+The aim of the estimation algorithm is to find estimates $\hat{\theta}$, such that
+$$
+\underbrace{E_{\hat{\theta}}\{ Z[X(t_1)] \mid X(t_0)=x_{obs}(t_0)\}}_{\text{'average' statistics}}=Z[x_{obs}(t_1)]
+$$
+The stochastic approximation algorithm in `siena07` solves this equation computationally in three **Phases**:
+
+1. Phase 1: Determining how big a change you get in $E_{\theta}\{ Z(X) \mid x_{obs}(t_0)\}$, to calibrate updates to $\theta$. This phase determines $D$
+2. Phase 2: The main estimation phase where you incrementally update the current values $\theta^{(r)}$ to $\theta^{(r+1)}$
+$$
+\theta^{(r+1)} = \theta^{(r)} - a_r D^{-1}(z_r-z_{obs})
+$$
+where $z_r=z(X_r)$, and $X_r$ is simulated from $x_{obs}(t_0)$ with parameter values $ \theta^{(r)}$. The final values (in practice average values over a subphase) are the estimates $\hat{\theta}$
+3. Phase 3: A large number of networks $x^{(1)},\ldots,x^{(n_3)}$ are simulated using $\hat{\theta}$ to calculate $\bar{z}$ and $sd(z)$, in order to calculate convergence t-ratios. In addition, the standard errors $se(\hat{\theta})$ of the estimates $\hat{\theta})$ are calculated.
+
+You may notice that the difference that is minimised in this algoritm is *not* $\bar{z}-z_{obs}$. Only **one** network is simulated in each interation - but it works (the other way also works but is less efficient)
+
+# Standard errors
+
+The second column in the ANOVA table contains the *nominal* **standard errors**, i.e. the approximate standard deviations of the estimators of the $\theta$'s. Typically, these are used for standard hypothesis tests:
+
+For effect/parameter $k$, test
+$$
+H_0:\beta_k=\beta_{k,0}=0
+$$
+against
+$$
+H_0:\beta_k\neq 0
+$$
+The test statistic
+$$
+\frac{\hat{\beta}_k-\beta_{k,0} }{sd(\hat{\beta}_k)}=\frac{\hat{\beta}_k }{sd(\hat{\beta}_k)}\approx \frac{\hat{\beta}_k }{se(\hat{\beta}_k)},
+$$
+is approximately normally distributed $N(0,1)$, if $H_0$ is true.
+
+Given the number of assumptions and approximations we need to make, I would advice that we stick to testing on the nominal 5% level, and reject $H_0$ when the test statistic is greater than $2$ in absolute value.
+
+## Test of simple model
+
+In the simple model we estimated, let us test $H_0:\beta_t=0$. The observed test statistic
+```{r}
+est_ans$theta[4]/est_ans$se[4]
+```
+is considerably larger than 2, and we can reject the null-hypothesis that the true value of the transitivity parameter is $0$.
+
+## Score-type test
+
+Intuitively, we could also test if we 'need' $\beta_t$, by estimating the model with $\beta_t=0$, and check the convergence t-statistic. You can do this yourself now!
+
+# Testing attribute
+
+There are many different types of covariates
+
+Type | RSiena type | 
+----:|:----------- |
+Constant monadic covariates | `coCovar` |
+Changing monadic covariates  | `varCovar` |
+Constant dyadic covariate  | `coDyadCovar` |
+Changing dyadic covariate | `varDyadCovar` |
+Changing (covariate) network | `sienaDependent` |
+
+The usual nomenclauture for measurement scales, and the distinction between metric and non-metric variables, applies.
+
+
+# Model with attributes
+The adjacency matrices `s501`, `s502`, and `s503`, for the so-called s-50 dataset, the network of 50 girls, are also available with `RSiena`. For a full description of this dataset see `?s50` or <http://www.stats.ox.ac.uk/~snijders/siena/s50_data.htm>
+
+## Rename adjacency matrices
+
+For clarity, we rename the adjacency matrices
+```{r loads50b, results='hide'}
+friend.data.w1 <- s501
+friend.data.w2 <- s502
+friend.data.w3 <- s503
+```
+
+Note that we have *three* (3) waves.
+
+Among the many monadic covariates are 'smoking' and 'drinking':
+
+```{r loads50attribs, results='hide'}
+drink <- s50a
+smoke <- s50s
+```
+
+Here, each variable had its own $n \times 3$ data matrix, one observation for each individual and each time-point
+
+```{r checks50s, results='hide'}
+head(smoke)
+```
+We are going to test
+$$
+H_0: \text{smokers have as many friends as non-smokers}
+$$
+Against an alternative hypothesis stating that there is a difference. We will interpret this as "sending as many ties" and "receiving as many ties" as non-smokers.
+
+![Pogues](https://raw.githubusercontent.com/johankoskinen/CHDH-SNA/main/images/shane.jpeg){width="50%"}
+
+## Formatting covariates
+
+We will use smoking at $t_0$ as our explanatory variable and define 'smoking' as a value of 2 or 3.
+
+```{r, results='hide'}
+smoke1.matrix <- as.numeric( smoke[,1]>1 )
+table(smoke1.matrix, useNA='always')
+```
+
+To tell RSiena how to use this variable, we format it
+
+```{r}
+smoke1 <- coCovar( smoke1.matrix )
+```
+
+Print to screen to see how R has interpreted the variable
+
+```{r, results='hide'}
+smoke1
+```
+
+## Format DP
+
+Format the dependent network variable as before:
+
+```{r sienadeps50, results='hide'}
+friendshipData <- array( c( friend.data.w1, 
+                            friend.data.w2, 
+                            friend.data.w3 ),
+                         dim = c( 50, 50, 3 ) )
+friendship <- sienaDependent(friendshipData)
+```
+
+## sienaDataCreate
+
+Using `sienaDataCreate`, we give `RSiena` the oppotunity to figure out how data are structured and what types of effects can be calculated from it
+
+
+```{r sienadatas50datacreate, results='hide'}
+s50data <- sienaDataCreate( friendship, smoke1)
+```
+
+## getEffects
+
+Since we have both a network as well as monadic covariates, we will have more effects avaialble to us that previously
+
+```{r s50eff,results='hide'}
+s50.effects <- getEffects(s50data)
+```
+
+### Sender effect
+For testing our hypothesis we want a statistic that corresponds to
+$$
+v_i x_{ij}
+$$
+for each tie-variable, and where $v_i$ is one or zero according to whether $i$ is a smoker or not, respectively. This is the sender effect
+
+
+```{r sendersmokeSelection, results='hide'}
+s50.effects <- includeEffects( s50.effects,# we "add and effect" to our effects object
+                               egoX,# the shortname here evokes that variable for 'ego' affects decision
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+```
+
+
+### Receiver effect
+
+Next, we want a statistic that corresponds to
+$$
+v_j x_{ij}
+$$
+so that if the corresponding parameter is positive, then actors are more likely to form (maintain) ties to actors $j$ that have $v_j=1$, i.e. are smokers
+
+
+
+
+```{r receiversmokeInf, results='hide'}
+s50.effects <- includeEffects( s50.effects,
+                               altX,# the shortname here evokes that variable for 'alter' affects decision of ego
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+```
+
+## Transitivity
+
+For the vanDeBunt dataset, we saw that triadic closure was important. We can chose to include it because we believe that it is important but also as a control for our hypothesised effects
+
+```{r s50transeff, results='hide', message=FALSE}
+s50.effects <- includeEffects(s50.effects,# We "add and effect" to s50.effects
+                              transTrip,# shortname of the effect
+                              include=TRUE)
+```
+
+
+## Specified model
+
+Our specified model is
+
+```{r}
+s50.effects
+```
+
+## sienaAlgorithmCreate
+
+Specify the simulation settings
+
+```{r s50algo, results='hide'}
+s50algorithm.simple <- sienaAlgorithmCreate( projname = 's50_simple' )# We are only using defaults
+```
+
+## Estimate
+
+Estimating the model with default settings is simply a callt to siena07
+
+```{r s50estimAlgo, results='hide', message=FALSE}
+s50.simple.ans <- siena07( s50algorithm.simple,# estimation settings
+                  data = s50data,# data object that knows DV and IV
+                  effects = s50.effects,# the effects we specified
+                  batch = TRUE,
+                  returnDeps = TRUE )
+```
+
+## Results
+
+Print the results to screen
+```{r anss50estimsimp2,  message=FALSE}
+summary( s50.simple.ans )
+```
+
+
+> Are all convergence statistics are less than 0.1 in absolute value? If so we can test our hypothesis - do we reject our $H_0$?
+
+# Adding homophily
+
+To account for (test) possible assortativity on smoking, we add the homophily effect:
+
+
+```{r homophsmokeSelec, results='hide'}
+s50.effects <- includeEffects( s50.effects,# we "add and effect" to our effects object
+                               sameX,# the shortname
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+s50.effects <- includeEffects( s50.effects,egoXaltX,interaction1 = "smoke1",include=FALSE)
+
+```
+
+## Re-estimate
+
+
+```{r s50estimsimpbert, results='hide', message=FALSE}
+s50.hom.ans <- siena07( s50algorithm.simple,# estimation settings
+                  data = s50data,# data object that knows DV and IV
+                  effects = s50.effects,# the effects we specified
+                  batch = TRUE,
+                  returnDeps = TRUE )
+```
+## Results
+
+Print the results to screen
+```{r anss50estimsimp, message=FALSE}
+summary( s50.hom.ans )
+```
+
+
+```{r s50estimsimp, results='hide', message=FALSE}
+s50.hom.ans.2 <- siena07( s50algorithm.simple,# estimation settings
+                  data = s50data,# data object that knows DV and IV
+                  effects = s50.effects,# the effects we specified
+                  batch = TRUE,
+                  returnDeps = TRUE,
+                  prevAns = s50.hom.ans)
+```
+
+## Interpretation
+
+If 
+
+1. Convergence t-ratios $| t_{conv} | < 0.1$, and
+2. Overall convergence ration less than $0.25$
+
+we can test our hypothesis, controlling for possible assortativity/homophily
+
+> What about homophily on smoking - do smokers befried other smokers?
+
+
+# Goodness-of-fit (GOF)
+How do we know if the model is any good?
+
+> You may simulate from the model to see if it replicates data
+
+
+## Built in GOF routines
+
+If you estimate a model with `siena07` and set `returnDeps=TRUE`, the answer object returns the simulations from Phase 3. Let us try with the model for `s50` from `CHDH-SNA-3.Rmd`.
+
+### Setting up s50
+
+```{r loads50a, results='hide'}
+friend.data.w1 <- s501# s50 wave 1
+friend.data.w2 <- s502# s50 wave 2
+friend.data.w3 <- s503# s50 wave 3
+
+smoke <- s50s# s50 smoking wave 1,2, and 3
+smoke1.matrix <- as.numeric( smoke[,1]>1 )# dichotomise
+smoke1 <- coCovar( smoke1.matrix )# format as constant covariate
+friendshipData <- array( c( friend.data.w1, 
+                            friend.data.w2, 
+                            friend.data.w3 ),
+                         dim = c( 50, 50, 3 ) )# paste together adjacency matrices in array
+friendship <- sienaDependent(friendshipData)# designate network as dependent variable
+s50data <- sienaDataCreate( friendship, smoke1) # create the siena data object
+s50.effects <- getEffects(s50data) # create an effects structure
+s50.effects <- includeEffects(s50.effects,# We "add an effect" to s50.effects
+                              transTrip,# shortname of the effect
+                              include=TRUE)
+s50.effects <- includeEffects( s50.effects,# we "add an effect" to our effects object
+                               egoX,# the shortname here evokes that variable for 'ego' affects decision
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+s50.effects <- includeEffects( s50.effects,
+                               altX,# the shortname here evokes that variable for 'alter' affects decision of ego
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+s50.effects <- includeEffects( s50.effects,egoXaltX,interaction1 = "smoke1",include=TRUE)# this is homophily on smoking
+s50algorithm.simple <- sienaAlgorithmCreate( projname = 's50_simple' )# We are only using defaults
+```
+
+Now estimate
+
+```{r}
+s50.hom.ans <- siena07( s50algorithm.simple,# estimation settings
+                  data = s50data,# data object that knows DV and IV
+                  effects = s50.effects,# the effects we specified
+                  batch = TRUE,
+                  returnDeps = TRUE )# IMPORTANT: we want to have access to networks simulated in Phase 3
+
+#### REESTIMATE:
+s50.hom.ans <- siena07( s50algorithm.simple,# estimation settings
+                         data = s50data,# data object that knows DV and IV
+                         effects = s50.effects,# the effects we specified
+                         batch = TRUE,
+                         returnDeps = TRUE ,prevAns = s50.hom.ans)
+```
+
+## Fit of network measures
+
+To test if the model replicates data well, we have to define what we want to look at.
+
+The in- and out-degree distributions are already provided in the GOF routine
+
+```{r}
+(gofi0 <- sienaGOF(s50.hom.ans, IndegreeDistribution, verbose=TRUE, join=TRUE,
+     varName="friendship"))
+(gofo0 <- sienaGOF(s50.hom.ans, OutdegreeDistribution, verbose=TRUE, join=TRUE,
+     levls=c(0:10,15,20),varName="friendship"))
+(gof0.tc <- sienaGOF(s50.hom.ans, TriadCensus, verbose=TRUE, join=TRUE,
+     varName="friendship"))
+```
+
+## Inspecting GOF distributions
+
+Plotting routines are defined for the GOF distributions. For example in-degree distribution
+
+```{r}
+plot( gof0.tc ,scale=TRUE)
+```
+
+# Dependent behaviour
+
+We are now going to use drinking alcohol as **both** a changing covariate **and** a dependent variable.
+
+## sienaDependent
+
+Since the alcohol variable is a dependent variable, we use `sienaDependent` to format it (print to screen to get a quick view of the information stored)
+
+```{r sienadepAlso, results='hide'}
+drink <- s50a
+drinking <- sienaDependent( drink, type = "behavior" )
+```
+
+## sienaDataCreate
+
+We now have a dataset with two dependent variables so we need to create a new siena data object using `sienaDataCreate`:
+
+```{r sienadatas50infl, results='hide'}
+s50data.infl <- sienaDataCreate( friendship, smoke1, drinking )
+```
+
+## getEffects
+
+With an additional variable, additional effects are available (**NB**:)
+
+```{r}
+s50.effects.infl <- getEffects(s50data.infl)
+```
+
+
+## As covariate
+
+The dependent variable `drinking` can act as a covariate on the network. We are going to use the 'complicated', five-parameter, homophily parametrisation of Lomi and Snijder (2019):
+
+```{r}
+s50.effects.infl <- includeEffects( s50.effects.infl,# again, 'adding' to the effects
+                                    egoX,# sender effect for alcohol
+                                    #egoSqX,# non-linear sender effect
+                                    altX,# receiver effect for alcohol
+                                   # altSqX,# non-linear receiver effect
+                                   # diffSqX,# squared difference of alcohol ego and alcohol alter
+                                   egoXaltX,
+                                    name = 'friendship',
+                                    interaction1 = "drinking" # DV works the same as an IV on another DV
+                                   # include =FALSE
+                                    )
+```
+
+## As a DV
+
+The dependent variable `drinking` can act as a dependent variable for other variables, including the other dependent variables.
+
+```{r}
+s50.effects.infl <- includeEffects( s50.effects.infl,# still augmenting effects structure
+                                    avAlt,# this is the shortname for "average alter"
+                                    name="drinking",# name: what is the dependent variable
+                                    interaction1 = "friendship" # the network is now "independent" variable
+                                    )
+```
+
+## Other effects
+
+We use the same social selection effects for smoking, the sender effect
+
+
+```{r sendersmokeinfluence, results='hide'}
+s50.effects.infl <- includeEffects( s50.effects.infl,# we "add and effect" to our effects object
+                               egoX,# the shortname here evokes that variable for 'ego' affects decision
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+```
+
+and the receiver effect
+
+
+```{r receiversmokeSelec, results='hide'}
+s50.effects.infl <- includeEffects( s50.effects.infl,
+                               altX,# the shortname here evokes that variable for 'alter' affects decision of ego
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+```
+
+and the homophily effect
+
+
+```{r homophsmokeInfl, results='hide'}
+s50.effects.infl  <- includeEffects( s50.effects.infl ,# we "add and effect" to our effects object
+                               egoXaltX,# the shortname
+                               interaction1 = "smoke1" # the variable we want to interact the DV with
+                               )
+```
+
+## Structural effects
+
+We will use *two* (2) different transitivity effects
+
+```{r}
+s50.effects.infl <- includeEffects( s50.effects.infl, transTrip, transRecTrip )
+```
+
+## Estimate
+
+Set up estimation settings:
+
+```{r s50influencealgo, results='hide',message=FALSE}
+s50.algo.infl<- sienaAlgorithmCreate( projname = 's50_infl' )
+```
+
+And we can estimate the model (it will take a little longer)
+
+```{r s50influenceest, results='hide',message=FALSE}
+s50.est.infl <- siena07( s50.algo.infl,
+                         data = s50data.infl,
+                         effects = s50.effects.infl,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+## Results
+
+We view the ANOVA table as before:
+
+```{r}
+summary(s50.est.infl)
+```
+
+
+Make a nicer listing of the results:
+```{r}
+siena.table(s50.est.infl, type="html", sig=TRUE)
+```
+
+
+# All effects
+
+Let us explore more effects using the s50 data set.
+
+## Data and model
+
+Instead of using smoking as a constant covariate, we will define smoking as yet another dependent variable
+
+```{r}
+smoke <- s50s
+```
+
+Define dependent and independent variables
+
+```{r}
+# format the dependent variables:
+friendshipData <- array( c( friend.data.w1, 
+                            friend.data.w2, 
+                            friend.data.w3 ),
+                         dim = c( 50, 50, 3 ) )
+friendship <- sienaDependent(friendshipData)
+drinking <- sienaDependent( drink, type = "behavior" )
+smoking <- sienaDependent( smoke, type = "behavior" )
+s50.big.data <- sienaDataCreate( friendship, smoking, drinking )
+# chose effects
+s50.big.effs <- getEffects( s50.big.data )
+```
+
+## Effects
+
+The effects avaiable to us are in the object `s50.big.effs`. Have a look!
+
+The most important columns are:
+
+name | effectName | shortName | interaction1 | interaction2 | include | fix| test |          
+:--------|:----------:| :----------:| :----------:| :----------:| :------:| :-----:| :----------:| 
+Dependent variable that owns effect | description | what you use to define model | covariate 1 | covariate 2 | in model, T/F | T/F | T /F |
+
+## Manual
+
+The [manual]("https://www.stats.ox.ac.uk/~snijders/siena/RSiena_Manual.pdf") has a comprehensive list of possible effects
+
+## Structural effects
+
+Let us examine only the structural part of the previous model
+
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs, transTrip, transRecTrip )
+```
+
+Set up estimation settings:
+
+```{r, results='hide',message=FALSE}
+s50.algo.struc.1<- sienaAlgorithmCreate( projname = 's50_struc.1' )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.1 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.1 )
+```
+
+What happens if we substitute `transTies` for `transRecTrip`
+
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transRecTrip,include=FALSE )
+s50.big.effs <- includeEffects( s50.big.effs, transTies )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.2 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.2 )
+```
+
+Include all three
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transRecTrip,include=TRUE )
+```
+
+And estimate
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.3 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.3 )
+```
+
+### GWESP
+
+An alternative to having both `transTies` and `transTrip` is to use `GWESP`
+```{r}
+s50.big.effs <- includeEffects( s50.big.effs,transTies,transTrip,include=FALSE )
+s50.big.effs <- includeEffects( s50.big.effs,gwespFF)
+```
+
+
+```{r , results='hide',message=FALSE}
+s50.est.struc.4 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.big.effs ,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.struc.4 )
+```
+
+> What differences do we see between the different parametrizations?
+
+## Selection effects
+
+Looking at `s50.big.effs`, all effects with `name=friendship` and `interaction1=smoking` are social selection effects with respect to smoking.
+
+```{r}
+s50.effects.infl <- s50.big.effs
+s50.effects.infl <- includeEffects( s50.effects.infl,# again, 'adding' to the effects
+                                    egoX,# sender effect for alcohol
+                                    egoSqX,# non-linear sender effect
+                                    altX,# receiver effect for alcohol
+                                    altSqX,# non-linear receiver effect
+                                    diffSqX,# squared difference of alcohol ego and alcohol alter
+                                    interaction1 = "drinking" # DV works the same as an IV on another DV
+                                    )
+```
+
+Looking at `s50.big.effs`, all effects with `name=friendship` and `interaction1=smoking` are social selection effects with respect to drinking.
+
+```{r}
+s50.effects.infl <- includeEffects( s50.effects.infl,# we "add and effect" to our effects object
+                               egoX,# the shortname here evokes that variable for 'ego' affects decision
+                               interaction1 = "smoking" # the variable we want to interact the DV with
+                               )
+```
+
+> Change or add a covariate effect on friendship of smoking
+
+Estimate!
+```{r , results='hide',message=FALSE}
+s50.est.infl.1 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+	
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.infl.1 )
+```
+
+
+## Influence effects
+
+As before we specify
+
+```{r}
+s50.effects.infl.2 <- s50.big.effs
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    avAlt,# this is the shortname for "average alter"
+                                    name="drinking",# name: what is the dependent variable
+                                    interaction1 = "friendship" # the network is now "independent" variable
+                                    )
+```
+
+But we can also add influence for `smoking` but let us try `totAlt` instead
+
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    totAlt,# this is the shortname for "average alter"
+                                    name="smoking",# name: what is the dependent variable
+                                    interaction1 = "friendship" # the network is now "independent" variable
+                                    )
+```
+
+The dependent variable can also be predictors of each other. Smoking as DV
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    effFrom,# the effect of 'interaction1' on smoking
+                                      name="smoking",# name: what is the dependent variable
+                                    interaction1 = "drinking"# drinking is now "independent" variable
+                                    )
+```
+
+Drinking as DV
+
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    effFrom,# the effect of 'interaction1' on smoking
+                                      name="drinking",# name: what is the dependent variable
+                                    interaction1 = "smoking"# drinking is now "independent" variable
+                                    )
+```
+
+### Interaction multiple variables
+
+The effect of the total similarity of an egos alters drinking on the smoking of ego (smoking tot. sim. (friendship) x alter's drinking) requires two interactions
+```{r}
+s50.effects.infl.2 <- includeEffects( s50.effects.infl.2,# still augmenting effects structure
+                                    totSimAltX,# the effect of 'interaction1' on smoking
+                                    name="smoking",# name: what is the dependent variable
+                                    interaction1 = "drinking",# drinking is now "independent" variable
+                                    interaction2 = "friendship" 
+                                    )
+```
+
+
+Estimate!
+```{r , results='hide',message=FALSE}
+s50.est.infl.2 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.2,
+                         batch = TRUE,
+                         returnDeps = TRUE )
+```
+	
+
+Check results
+
+```{r , results='hide',message=FALSE}
+summary( s50.est.infl.2 )
+```
+
+
+# More Goodness-of-fit (GOF)
+
+## Built in GOF routines
+
+### Score-type test
+
+What if we want to test if we should include `totSimAltX` for `drinking`?
+
+The we add the effect but set `test=TRUE` and `fix=TRUE`
+
+```{r}
+s50.effects.infl.3 <- s50.effects.infl.2
+s50.effects.infl.3 <- includeEffects( s50.effects.infl.3,# still augmenting effects structure
+                                    totSimAltX,# the effect of 'interaction1' on smoking
+                                    name="drinking",# name: what is the dependent variable
+                                    interaction1 = "smoking",# drinking is now "independent" variable
+                                    interaction2 = "friendship" ,
+                                    test=TRUE, fix=TRUE
+                                    )
+```
+
+The parameter is now fixed to 0
+
+Estimate the model with`totSimAltX` for drinking set to 0
+
+Estimate!
+```{r , results='hide',message=FALSE}
+(s50.est.infl.3 <- siena07( s50.algo.struc.1,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.3,
+                         batch = TRUE,
+                         returnDeps = TRUE ))
+```
+
+We can now test
+$$
+H_0: \beta_{totSimAltX}=0
+$$
+against
+
+$$
+H_1: \beta_{totSimAltX}\neq0
+$$
+
+using a Score-type test:
+
+```{r}
+score.Test(s50.est.infl.3)
+```
+
+> This test only uses the simulated statistics for the effect and there is no need to actually estimate the parameter
+
+# Trouble shooting
+
+## Convergence issues
+
+What if my model does not converge?
+
+If converge t-statistics are close to $0.1$ in absolute value, restart using `prevAns`
+
+Assume that we did not have enough iterations in Phase 3 **and** only 2 subphases in Phase 2
+```{r, results='hide',message=FALSE}
+s50.algo.struc.short<- sienaAlgorithmCreate( projname = 's50_struc.1', n3 =50, nsub=2)
+```
+
+
+
+Estimate!
+```{r , results='hide',message=FALSE}
+(s50.est.infl.3 <- siena07( s50.algo.struc.short,
+                         data = s50.big.data ,
+                         effects =s50.effects.infl.2,
+                         batch = TRUE,
+                         returnDeps = TRUE ))
+```
