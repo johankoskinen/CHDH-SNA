@@ -90,6 +90,9 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
   
  If you need to update your version of R, a handy guide is provided [here](https://www.linkedin.com/pulse/3-methods-update-r-rstudio-windows-mac-woratana-ngarmtrakulchol) 
 
+ Please note that RSiena is no longer maintained on CRAN. Now the latest version fo RSiena and other packages is found here: [GitHub/RSiena](https://github.com/stocnet/rsiena/)
+
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
