@@ -81,6 +81,8 @@ Before the workshop, I would expect you to have looked through the INTRO tutoria
 * Overview
 * Adjacency matrix
 * Network Position
+
+
 using the menue bar on the laft-hand side. Concepts like *degree*, *density*, *triad*, etc, are fundamental to our understanding of network structure.
 
 ### SAOMs
