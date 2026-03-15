@@ -84,7 +84,7 @@ Before the workshop, I would expect you to have looked through the INTRO tutoria
 * Network Position
 
 
-using the menue bar on the laft-hand side. Concepts like *degree*, *density*, *triad*, etc, are fundamental to our understanding of network structure.
+using the menue bar on the laft-hand side. You can then dip into these issues by trying out the code, either by copy-pasting from the html or by downloading and opening up CHDH-SNA-INTRO.Rmd. Concepts like *degree*, *density*, *triad*, etc, are fundamental to our understanding of network structure.
 
 ### SAOMs
 
