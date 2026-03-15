@@ -36,7 +36,7 @@ The schedule for the SNA workshop
 4. Modelling Social Influence and Selection with stochastic actor-oriented models (SAOMs)
 5. Advanced topics in SAOMs
 
-For details on venue and timings see [Eventbrite]([https://www.eventbrite.com/e/network-analysis-workshop-tickets-528916191567](https://www.eventbrite.com.au/e/social-network-analysis-workshop-tickets-795764040667))
+For details on venue and timings see [Eventbrite]([https://www.eventbrite.com.au/e/social-network-analysis-workshop-tickets-1982245792526](https://www.eventbrite.com.au/e/social-network-analysis-workshop-tickets-1982245792526))
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -71,7 +71,15 @@ Markdowns/Data-Formatting.Rmd
 You will find it in  [CHDH-SNA/Markdowns](https://github.com/johankoskinen/CHDH-SNA/tree/main/Markdowns)
 
 No fancy R-wrappers will be used and the code is written entirely in base R and [Quick-R](https://www.statmethods.net/)
-should be a sufficient source of help outside of Googling package specific issues. For the SAOM part of the workshop (sessions 2-4) the repository 
+should be a sufficient source of help outside of Googling package specific issues. 
+
+### Presessional training
+
+If your experience of doing SNA in R is limited, there is a tutorial CHDH-SNA-INTRO.Rmd that is designed for self-study. If you have RStudio installed (more of that below in getting started), you can download this RMarkdown, open it in RStudio, and click your way through it. You may look at this turorial in html format as well in CHDH-SNA-INTRO.html. This R-tutorial is accompanied by a slide-deck (CHDH-SNA-INTRO.pdf), that highlights key aspects of empirical network analysis.
+
+### SAOMs
+
+For the SAOM part of the workshop (sessions 3-4) the repository 
 [https://www.stats.ox.ac.uk/~snijders/siena/](https://www.stats.ox.ac.uk/~snijders/siena/) contains all the resources you will ever need.
 
 <h3 align="center"><a href="https://www.stats.ox.ac.uk/~snijders/siena/"><img src="images/rsienalogo.png" alt="R" width="100" height="100"></a></h3>
@@ -90,7 +98,7 @@ You *will*, however, need to come with a laptop with R and R-studio installed. I
   
  If you need to update your version of R, a handy guide is provided [here](https://www.linkedin.com/pulse/3-methods-update-r-rstudio-windows-mac-woratana-ngarmtrakulchol) 
 
- Please note that RSiena is no longer maintained on CRAN. Now the latest version fo RSiena and other packages is found here: [GitHub/RSiena](https://github.com/stocnet/rsiena/)
+ Please note that RSiena is no longer maintained on CRAN. Now the latest version of RSiena and other packages is found here: [GitHub/RSiena](https://github.com/stocnet/rsiena/)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
