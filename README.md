@@ -77,7 +77,8 @@ should be a sufficient source of help outside of Googling package specific issue
 
 If your experience of doing SNA in R is limited, there is a tutorial CHDH-SNA-INTRO.Rmd that is designed for self-study. If you have RStudio installed (more of that below in getting started), you can download this RMarkdown, open it in RStudio, and click your way through it. You may look at this turorial in html format as well in CHDH-SNA-INTRO.html. This R-tutorial is accompanied by a slide-deck (CHDH-SNA-INTRO.pdf), that highlights key aspects of empirical network analysis.
 
-Before the workshop, I would expect you to have looked through the INTRO tutorial (if not actually done some of the coding). In particular, *open up* [CHDH-SNA/Markdowns/CHDH-SNA-INTRO.html](https://github.com/johankoskinen/CHDH-SNA/tree/main/Markdowns/CHDH-SNA-INTRO.html), navigate through these sections
+Before the workshop, I would expect you to have looked through the INTRO tutorial (if not actually done some of the coding). In particular, *open up CHDH-SNA-INTRO.html* in  [CHDH-SNA/Markdowns](https://github.com/johankoskinen/CHDH-SNA/tree/main/Markdowns), navigate through these sections
+
 * Overview
 * Adjacency matrix
 * Network Position
